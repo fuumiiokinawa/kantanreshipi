@@ -6,6 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#ffffff">
 <title>今日何たべる？</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'><rect width='180' height='180' rx='36' fill='%23722f37'/><text x='90' y='75' text-anchor='middle' font-family='sans-serif' font-size='48' font-weight='bold' fill='%23d4af37'>何</text><text x='90' y='135' text-anchor='middle' font-family='sans-serif' font-size='48' font-weight='bold' fill='%23d4af37'>たべ</text></svg>">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'><rect width='180' height='180' rx='36' fill='%23722f37'/><text x='90' y='75' text-anchor='middle' font-family='sans-serif' font-size='48' font-weight='bold' fill='%23d4af37'>何</text><text x='90' y='135' text-anchor='middle' font-family='sans-serif' font-size='48' font-weight='bold' fill='%23d4af37'>たべ</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -1412,6 +1414,48 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
+  margin-bottom: 0.8rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.shopping-month-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.shopping-nav-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--gold);
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.shopping-nav-btn:hover {
+  background: var(--burgundy);
+  color: white;
+  border-color: var(--burgundy);
+}
+
+.shopping-month-title {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--gold);
+  min-width: 60px;
+  text-align: center;
+}
+
+.shopping-sub-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
   margin-bottom: 1.5rem;
   align-items: center;
 }
@@ -2009,6 +2053,13 @@ body {
   <section class="section" id="shopping">
     <div class="shopping-header">
       <h2 class="shopping-title">🛒 買い物リスト</h2>
+      <div class="shopping-month-nav">
+        <button class="shopping-nav-btn" onclick="changeShoppingMonth(-1)">◀</button>
+        <span class="shopping-month-title" id="shoppingMonthTitle">1月</span>
+        <button class="shopping-nav-btn" onclick="changeShoppingMonth(1)">▶</button>
+      </div>
+    </div>
+    <div class="shopping-sub-header">
       <div class="week-btns">
         <button class="week-btn active" data-week="1">第1週</button>
         <button class="week-btn" data-week="2">第2週</button>
@@ -2092,39 +2143,100 @@ const WEEKDAYS = ['日','月','火','水','木','金','土'];
 const DAILY_CALORIE_TARGET = 2000;
 
 // メニューとカロリーデータ（1人前）
-const MENUS = {
-  1:{main:"鶏の照り焼き",side:"ほうれん草のごま和え",soup:"豆腐とわかめの味噌汁",salad:"キャベツの塩昆布サラダ",cal:{main:320,side:45,soup:55,salad:35}},
-  2:{main:"豚の生姜焼き",side:"きんぴらごぼう",soup:"なめこの味噌汁",salad:"大根サラダ",cal:{main:380,side:85,soup:40,salad:25}},
-  3:{main:"鮭のムニエル",side:"ブロッコリーのおかか和え",soup:"卵スープ",salad:"トマトときゅうりのサラダ",cal:{main:290,side:50,soup:70,salad:40}},
-  4:{main:"肉じゃが",side:"小松菜のおひたし",soup:"大根の味噌汁",salad:"もやしのナムル",cal:{main:350,side:30,soup:45,salad:50}},
-  5:{main:"麻婆豆腐",side:"春雨サラダ",soup:"中華スープ",salad:"きゅうりの浅漬け",cal:{main:310,side:95,soup:35,salad:15}},
-  6:{main:"カレイの煮付け",side:"ひじきの煮物",soup:"あさりの味噌汁",salad:"白菜の浅漬け",cal:{main:180,side:70,soup:50,salad:20}},
-  7:{main:"ハンバーグ",side:"コーンポテトサラダ",soup:"コンソメスープ",salad:"グリーンサラダ",cal:{main:450,side:180,soup:45,salad:30}},
-  8:{main:"鶏の唐揚げ",side:"卵焼き",soup:"豚汁",salad:"キャベツの千切り",cal:{main:420,side:110,soup:120,salad:20}},
-  9:{main:"豚キムチ",side:"チヂミ",soup:"わかめスープ",salad:"韓国風サラダ",cal:{main:380,side:220,soup:30,salad:45}},
-  10:{main:"サバの味噌煮",side:"切り干し大根",soup:"しじみの味噌汁",salad:"酢の物",cal:{main:340,side:80,soup:35,salad:30}},
-  11:{main:"回鍋肉",side:"餃子",soup:"酸辣湯",salad:"バンバンジーサラダ",cal:{main:350,side:280,soup:90,salad:120}},
-  12:{main:"チキン南蛮",side:"かぼちゃの煮物",soup:"コーンスープ",salad:"タルタルサラダ",cal:{main:520,side:95,soup:145,salad:85}},
-  13:{main:"青椒肉絲",side:"冷奴",soup:"卵とトマトのスープ",salad:"ザーサイ和え",cal:{main:280,side:80,soup:75,salad:25}},
-  14:{main:"鯖の塩焼き",side:"厚揚げの煮物",soup:"けんちん汁",salad:"ほうれん草の白和え",cal:{main:310,side:140,soup:95,salad:70}},
-  15:{main:"牛丼",side:"温泉卵",soup:"味噌汁",salad:"きゅうりの浅漬け",cal:{main:650,side:90,soup:45,salad:15}},
-  16:{main:"鶏肉とキノコの炒め",side:"茶碗蒸し",soup:"きのこ汁",salad:"青菜のお浸し",cal:{main:280,side:95,soup:40,salad:25}},
-  17:{main:"エビチリ",side:"青梗菜の炒め",soup:"ワンタンスープ",salad:"きゅうりの中華和え",cal:{main:260,side:55,soup:110,salad:30}},
-  18:{main:"とんかつ",side:"キャベツの千切り",soup:"なめこ汁",salad:"マカロニサラダ",cal:{main:490,side:20,soup:40,salad:220}},
-  19:{main:"アジの南蛮漬け",side:"里芋の煮物",soup:"お吸い物",salad:"大根サラダ",cal:{main:240,side:110,soup:25,salad:25}},
-  20:{main:"オムライス",side:"ウインナー炒め",soup:"野菜スープ",salad:"コールスロー",cal:{main:580,side:190,soup:65,salad:95}},
-  21:{main:"親子丼",side:"冷奴",soup:"赤だし",salad:"水菜サラダ",cal:{main:550,side:80,soup:50,salad:35}},
-  22:{main:"鶏むね肉の味噌漬け焼き",side:"れんこんのきんぴら",soup:"豆腐の味噌汁",salad:"にんじんしりしり",cal:{main:220,side:95,soup:55,salad:75}},
-  23:{main:"ぶりの照り焼き",side:"筑前煮",soup:"あおさの味噌汁",salad:"大根なます",cal:{main:340,side:145,soup:40,salad:35}},
-  24:{main:"焼きそば",side:"ポテトサラダ",soup:"中華スープ",salad:"もやしの中華サラダ",cal:{main:470,side:170,soup:35,salad:45}},
-  25:{main:"豚の角煮",side:"煮卵",soup:"白菜の味噌汁",salad:"ほうれん草ナムル",cal:{main:520,side:90,soup:50,salad:55}},
-  26:{main:"鮭のホイル焼き",side:"いんげんの胡麻和え",soup:"キャベツの味噌汁",salad:"ポン酢きのこ",cal:{main:250,side:55,soup:45,salad:30}},
-  27:{main:"豚肉と野菜の炒め",side:"ポテトサラダ",soup:"たまねぎの味噌汁",salad:"トマトサラダ",cal:{main:320,side:170,soup:50,salad:40}},
-  28:{main:"カレーライス",side:"コールスロー",soup:"コンソメスープ",salad:"グリーンサラダ",cal:{main:720,side:95,soup:45,salad:30}},
-  29:{main:"鶏の塩麹焼き",side:"なすの煮びたし",soup:"油揚げの味噌汁",salad:"きゅうりとわかめの酢の物",cal:{main:240,side:65,soup:60,salad:25}},
-  30:{main:"八宝菜",side:"春巻き",soup:"たまごスープ",salad:"中華風冷奴",cal:{main:280,side:190,soup:70,salad:95}},
-  31:{main:"すき焼き風煮込み",side:"白菜のおひたし",soup:"しいたけの味噌汁",salad:"大根サラダ",cal:{main:480,side:25,soup:45,salad:25}}
-};
+// 全メニューリスト（60種類）
+const ALL_MENUS = [
+  {main:"鶏の照り焼き",side:"ほうれん草のごま和え",soup:"豆腐とわかめの味噌汁",salad:"キャベツの塩昆布サラダ",cal:{main:320,side:45,soup:55,salad:35}},
+  {main:"豚の生姜焼き",side:"きんぴらごぼう",soup:"なめこの味噌汁",salad:"大根サラダ",cal:{main:380,side:85,soup:40,salad:25}},
+  {main:"鮭のムニエル",side:"ブロッコリーのおかか和え",soup:"卵スープ",salad:"トマトときゅうりのサラダ",cal:{main:290,side:50,soup:70,salad:40}},
+  {main:"肉じゃが",side:"小松菜のおひたし",soup:"大根の味噌汁",salad:"もやしのナムル",cal:{main:350,side:30,soup:45,salad:50}},
+  {main:"麻婆豆腐",side:"春雨サラダ",soup:"中華スープ",salad:"きゅうりの浅漬け",cal:{main:310,side:95,soup:35,salad:15}},
+  {main:"カレイの煮付け",side:"ひじきの煮物",soup:"あさりの味噌汁",salad:"白菜の浅漬け",cal:{main:180,side:70,soup:50,salad:20}},
+  {main:"ハンバーグ",side:"コーンポテトサラダ",soup:"コンソメスープ",salad:"グリーンサラダ",cal:{main:450,side:180,soup:45,salad:30}},
+  {main:"鶏の唐揚げ",side:"卵焼き",soup:"豚汁",salad:"キャベツの千切り",cal:{main:420,side:110,soup:120,salad:20}},
+  {main:"豚キムチ",side:"チヂミ",soup:"わかめスープ",salad:"韓国風サラダ",cal:{main:380,side:220,soup:30,salad:45}},
+  {main:"サバの味噌煮",side:"切り干し大根",soup:"しじみの味噌汁",salad:"酢の物",cal:{main:340,side:80,soup:35,salad:30}},
+  {main:"回鍋肉",side:"餃子",soup:"酸辣湯",salad:"バンバンジーサラダ",cal:{main:350,side:280,soup:90,salad:120}},
+  {main:"チキン南蛮",side:"かぼちゃの煮物",soup:"コーンスープ",salad:"タルタルサラダ",cal:{main:520,side:95,soup:145,salad:85}},
+  {main:"青椒肉絲",side:"冷奴",soup:"卵とトマトのスープ",salad:"ザーサイ和え",cal:{main:280,side:80,soup:75,salad:25}},
+  {main:"鯖の塩焼き",side:"厚揚げの煮物",soup:"けんちん汁",salad:"ほうれん草の白和え",cal:{main:310,side:140,soup:95,salad:70}},
+  {main:"牛丼",side:"温泉卵",soup:"味噌汁",salad:"きゅうりの浅漬け",cal:{main:650,side:90,soup:45,salad:15}},
+  {main:"鶏肉とキノコの炒め",side:"茶碗蒸し",soup:"きのこ汁",salad:"青菜のお浸し",cal:{main:280,side:95,soup:40,salad:25}},
+  {main:"エビチリ",side:"青梗菜の炒め",soup:"ワンタンスープ",salad:"きゅうりの中華和え",cal:{main:260,side:55,soup:110,salad:30}},
+  {main:"とんかつ",side:"キャベツの千切り",soup:"なめこ汁",salad:"マカロニサラダ",cal:{main:490,side:20,soup:40,salad:220}},
+  {main:"アジの南蛮漬け",side:"里芋の煮物",soup:"お吸い物",salad:"大根サラダ",cal:{main:240,side:110,soup:25,salad:25}},
+  {main:"オムライス",side:"ウインナー炒め",soup:"野菜スープ",salad:"コールスロー",cal:{main:580,side:190,soup:65,salad:95}},
+  {main:"親子丼",side:"冷奴",soup:"赤だし",salad:"水菜サラダ",cal:{main:550,side:80,soup:50,salad:35}},
+  {main:"鶏むね肉の味噌漬け焼き",side:"れんこんのきんぴら",soup:"豆腐の味噌汁",salad:"にんじんしりしり",cal:{main:220,side:95,soup:55,salad:75}},
+  {main:"ぶりの照り焼き",side:"筑前煮",soup:"あおさの味噌汁",salad:"大根なます",cal:{main:340,side:145,soup:40,salad:35}},
+  {main:"焼きそば",side:"ポテトサラダ",soup:"中華スープ",salad:"もやしの中華サラダ",cal:{main:470,side:170,soup:35,salad:45}},
+  {main:"豚の角煮",side:"煮卵",soup:"白菜の味噌汁",salad:"ほうれん草ナムル",cal:{main:520,side:90,soup:50,salad:55}},
+  {main:"鮭のホイル焼き",side:"いんげんの胡麻和え",soup:"キャベツの味噌汁",salad:"ポン酢きのこ",cal:{main:250,side:55,soup:45,salad:30}},
+  {main:"豚肉と野菜の炒め",side:"ポテトサラダ",soup:"たまねぎの味噌汁",salad:"トマトサラダ",cal:{main:320,side:170,soup:50,salad:40}},
+  {main:"カレーライス",side:"コールスロー",soup:"コンソメスープ",salad:"グリーンサラダ",cal:{main:720,side:95,soup:45,salad:30}},
+  {main:"鶏の塩麹焼き",side:"なすの煮びたし",soup:"油揚げの味噌汁",salad:"きゅうりとわかめの酢の物",cal:{main:240,side:65,soup:60,salad:25}},
+  {main:"八宝菜",side:"春巻き",soup:"たまごスープ",salad:"中華風冷奴",cal:{main:280,side:190,soup:70,salad:95}},
+  {main:"すき焼き風煮込み",side:"白菜のおひたし",soup:"しいたけの味噌汁",salad:"大根サラダ",cal:{main:480,side:25,soup:45,salad:25}},
+  // 追加メニュー（32〜60）
+  {main:"豚しゃぶサラダ",side:"オクラの胡麻和え",soup:"なめこの味噌汁",salad:"トマトサラダ",cal:{main:350,side:40,soup:40,salad:35}},
+  {main:"鶏手羽の甘辛煮",side:"ひじきの煮物",soup:"豆腐の味噌汁",salad:"きゅうりの酢の物",cal:{main:380,side:70,soup:55,salad:25}},
+  {main:"ゴーヤチャンプルー",side:"冷奴",soup:"もずくスープ",salad:"人参しりしり",cal:{main:300,side:80,soup:30,salad:75}},
+  {main:"タコライス",side:"コーンサラダ",soup:"わかめスープ",salad:"アボカドサラダ",cal:{main:550,side:85,soup:30,salad:120}},
+  {main:"鶏肉のトマト煮",side:"ブロッコリーサラダ",soup:"コンソメスープ",salad:"グリーンサラダ",cal:{main:320,side:60,soup:45,salad:30}},
+  {main:"豚肉のピカタ",side:"ポテトサラダ",soup:"ミネストローネ",salad:"コールスロー",cal:{main:400,side:170,soup:85,salad:95}},
+  {main:"イワシの蒲焼き",side:"ほうれん草のおひたし",soup:"大根の味噌汁",salad:"もやしのナムル",cal:{main:290,side:30,soup:45,salad:50}},
+  {main:"牛肉とピーマンの炒め",side:"春雨サラダ",soup:"わかめスープ",salad:"きゅうりの浅漬け",cal:{main:380,side:95,soup:30,salad:15}},
+  {main:"鶏つくね",side:"卵焼き",soup:"豚汁",salad:"キャベツの塩昆布サラダ",cal:{main:350,side:110,soup:120,salad:35}},
+  {main:"ブリ大根",side:"小松菜のおひたし",soup:"しじみの味噌汁",salad:"大根なます",cal:{main:280,side:30,soup:35,salad:35}},
+  {main:"酢豚",side:"春巻き",soup:"中華スープ",salad:"バンバンジーサラダ",cal:{main:420,side:190,soup:35,salad:120}},
+  {main:"チンジャオロース",side:"餃子",soup:"卵スープ",salad:"ザーサイ和え",cal:{main:300,side:280,soup:70,salad:25}},
+  {main:"鶏肉の味噌焼き",side:"切り干し大根",soup:"けんちん汁",salad:"ほうれん草の白和え",cal:{main:280,side:80,soup:95,salad:70}},
+  {main:"豚肉の塩麹焼き",side:"かぼちゃの煮物",soup:"油揚げの味噌汁",salad:"酢の物",cal:{main:320,side:95,soup:60,salad:30}},
+  {main:"白身魚のフライ",side:"タルタルサラダ",soup:"コーンスープ",salad:"キャベツの千切り",cal:{main:380,side:85,soup:145,salad:20}},
+  {main:"肉豆腐",side:"きんぴらごぼう",soup:"なめこの味噌汁",salad:"大根サラダ",cal:{main:350,side:85,soup:40,salad:25}},
+  {main:"鶏肉とナスの炒め",side:"冷奴",soup:"わかめスープ",salad:"トマトときゅうりのサラダ",cal:{main:290,side:80,soup:30,salad:40}},
+  {main:"豚ロースの西京焼き",side:"筑前煮",soup:"あおさの味噌汁",salad:"水菜サラダ",cal:{main:340,side:145,soup:40,salad:35}},
+  {main:"鮭のちゃんちゃん焼き",side:"いんげんの胡麻和え",soup:"大根の味噌汁",salad:"キャベツの塩昆布サラダ",cal:{main:320,side:55,soup:45,salad:35}},
+  {main:"牛肉のしぐれ煮",side:"温泉卵",soup:"豆腐の味噌汁",salad:"きゅうりの浅漬け",cal:{main:400,side:90,soup:55,salad:15}},
+  {main:"鶏のさっぱり煮",side:"茶碗蒸し",soup:"きのこ汁",salad:"青菜のお浸し",cal:{main:280,side:95,soup:40,salad:25}},
+  {main:"豚肉とキャベツの味噌炒め",side:"ポテトサラダ",soup:"たまねぎの味噌汁",salad:"もやしのナムル",cal:{main:350,side:170,soup:50,salad:50}},
+  {main:"アジフライ",side:"マカロニサラダ",soup:"コンソメスープ",salad:"コールスロー",cal:{main:380,side:220,soup:45,salad:95}},
+  {main:"豆腐ステーキ",side:"ひじきの煮物",soup:"しいたけの味噌汁",salad:"大根サラダ",cal:{main:220,side:70,soup:45,salad:25}},
+  {main:"鶏肉のカレー炒め",side:"コーンポテトサラダ",soup:"野菜スープ",salad:"グリーンサラダ",cal:{main:320,side:180,soup:65,salad:30}},
+  {main:"サバの竜田揚げ",side:"れんこんのきんぴら",soup:"あさりの味噌汁",salad:"白菜の浅漬け",cal:{main:380,side:95,soup:50,salad:20}},
+  {main:"牛肉とごぼうの炒め煮",side:"厚揚げの煮物",soup:"白菜の味噌汁",salad:"ほうれん草ナムル",cal:{main:360,side:140,soup:50,salad:55}},
+  {main:"鶏ささみのフライ",side:"ブロッコリーのおかか和え",soup:"卵スープ",salad:"トマトサラダ",cal:{main:300,side:50,soup:70,salad:35}},
+  {main:"豚肉と大根の煮物",side:"小松菜のおひたし",soup:"油揚げの味噌汁",salad:"きゅうりとわかめの酢の物",cal:{main:320,side:30,soup:60,salad:25}}
+];
+
+// 月ごとのメニューを生成（シード付きランダム）
+function generateMonthlyMenus(year, month) {
+  // シード値（年月で固定）
+  const seed = year * 100 + month;
+  let rand = seed;
+  const random = () => {
+    rand = (rand * 9301 + 49297) % 233280;
+    return rand / 233280;
+  };
+  
+  // メニューをシャッフル
+  const shuffled = [...ALL_MENUS];
+  for(let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  
+  // 日数分のメニューを割り当て
+  const lastDate = new Date(year, month + 1, 0).getDate();
+  const menus = {};
+  for(let d = 1; d <= lastDate; d++) {
+    menus[d] = shuffled[(d - 1) % shuffled.length];
+  }
+  
+  return menus;
+}
+
+// 現在表示中の月のメニュー
+let MENUS = generateMonthlyMenus(year, month);
 
 // 材料データ（6人前基準）
 const INGREDIENTS = {
@@ -2276,6 +2388,8 @@ let year = 2026, month = 0;
 let selectedDay = 1;
 let viewMode = 'month';
 let shoppingWeek = 1;
+let shoppingMonth = 0; // 0 = 1月
+let shoppingYear = 2026;
 let peopleCount = 6;
 let votes = {};
 
@@ -2343,6 +2457,7 @@ window.onload = function() {
   renderCalendar();
   renderShop();
   renderMemos();
+  updateShoppingMonthTitle();
   setupEventListeners();
 };
 
@@ -2458,6 +2573,9 @@ function getCaloriePercent(calories) {
 // カレンダー表示
 // =====================
 function renderCalendar() {
+  // 月が変わったらメニューを再生成
+  MENUS = generateMonthlyMenus(year, month);
+  
   const grid = document.getElementById('calendarGrid');
   const weekdays = [...grid.querySelectorAll('.weekday')];
   grid.innerHTML = '';
@@ -2502,6 +2620,9 @@ function renderCalendar() {
 }
 
 function renderWeekView() {
+  // 月が変わったらメニューを再生成
+  MENUS = generateMonthlyMenus(year, month);
+  
   const container = document.getElementById('weekView');
   const weekStart = selectedDay - new Date(year, month, selectedDay).getDay();
   const lastDate = new Date(year, month+1, 0).getDate();
@@ -2552,6 +2673,9 @@ function renderWeekView() {
 }
 
 function renderDayView() {
+  // 月が変わったらメニューを再生成
+  MENUS = generateMonthlyMenus(year, month);
+  
   const container = document.getElementById('dayView');
   const menu = MENUS[selectedDay];
   const dow = new Date(year, month, selectedDay).getDay();
@@ -2939,40 +3063,74 @@ function renderShop() {
   const grid = document.getElementById('shopGrid');
   const priceEl = document.getElementById('priceEstimate');
   
+  // 買い物月のメニューを生成
+  const shopMenus = generateMonthlyMenus(shoppingYear, shoppingMonth);
+  
   // 人数に応じた倍率
   const ratio = peopleCount / 6;
   
-  // 仮の買い物データ
-  const categories = {
-    meat: { name: '🥩 肉類', items: {'鶏もも肉': 900 * ratio, '豚ロース': 600 * ratio, '合い挽き': 400 * ratio} },
-    fish: { name: '🐟 魚介', items: {'鮭': Math.ceil(6 * ratio), 'サバ': Math.ceil(4 * ratio)} },
-    veg: { name: '🥬 野菜', items: {'玉ねぎ': Math.ceil(4 * ratio), 'にんじん': Math.ceil(3 * ratio), 'キャベツ': Math.ceil(1 * ratio)} },
-    dairy: { name: '🥚 卵・乳製品', items: {'卵': Math.ceil(12 * ratio), '豆腐': Math.ceil(4 * ratio)} },
-    season: { name: '🧂 調味料', items: {'醤油': 1, 'みりん': 1} },
-    other: { name: '🛒 その他', items: {'米': Math.ceil(2 * ratio)} }
+  // 週の日付範囲を計算
+  const startDay = (shoppingWeek - 1) * 7 + 1;
+  const lastDate = new Date(shoppingYear, shoppingMonth + 1, 0).getDate();
+  const endDay = Math.min(shoppingWeek * 7, lastDate);
+  
+  // レシピから材料を集計
+  const list = { meat: {}, fish: {}, veg: {}, dairy: {}, season: {}, other: {} };
+  
+  for(let d = startDay; d <= endDay; d++) {
+    const menu = shopMenus[d];
+    if(!menu) continue;
+    
+    ['main', 'side', 'soup', 'salad'].forEach(type => {
+      const dishName = menu[type];
+      const recipe = RECIPES[dishName];
+      if(recipe && recipe.ing) {
+        recipe.ing.forEach(([name, amt]) => {
+          const info = INGREDIENTS[name];
+          if(info) {
+            if(!list[info.cat][name]) list[info.cat][name] = 0;
+            list[info.cat][name] += amt * ratio;
+          }
+        });
+      }
+    });
+  }
+  
+  // カテゴリ名
+  const catNames = {
+    meat: '🥩 肉類',
+    fish: '🐟 魚介',
+    veg: '🥬 野菜',
+    dairy: '🥚 卵・乳製品',
+    season: '🧂 調味料',
+    other: '🛒 その他'
   };
   
   let html = '';
   let totalPrice = 0;
   
-  Object.entries(categories).forEach(([cat, data]) => {
+  Object.entries(list).forEach(([cat, items]) => {
+    if(Object.keys(items).length === 0) return;
+    
     html += `
       <div class="cat-card">
-        <div class="cat-header ${cat}">${data.name}</div>
+        <div class="cat-header ${cat}">${catNames[cat]}</div>
         <div class="cat-items">
     `;
     
-    Object.entries(data.items).forEach(([name, amt]) => {
+    Object.entries(items).forEach(([name, amt]) => {
       // チェック済みアイテムはスキップ
-      const weekKey = 'week' + shoppingWeek;
+      const weekKey = `${shoppingYear}-${shoppingMonth+1}-week${shoppingWeek}`;
       if(checkedItems[weekKey] && checkedItems[weekKey].includes(name)) return;
       
       const info = INGREDIENTS[name] || { unit: '', price: 100 };
       let amtStr = '';
       if(info.unit === 'g') {
         amtStr = amt >= 1000 ? `${(amt/1000).toFixed(1)}kg` : `${Math.round(amt)}g`;
+      } else if(info.unit === 'ml') {
+        amtStr = amt >= 1000 ? `${(amt/1000).toFixed(1)}L` : `${Math.round(amt)}ml`;
       } else {
-        amtStr = `${Math.round(amt)}${info.unit}`;
+        amtStr = `${Math.ceil(amt)}${info.unit}`;
       }
       totalPrice += info.price * amt;
       
@@ -2988,13 +3146,17 @@ function renderShop() {
     html += '</div></div>';
   });
   
+  if(html === '') {
+    html = '<div style="text-align:center;color:var(--text-muted);padding:2rem;">この週のレシピデータがありません</div>';
+  }
+  
   grid.innerHTML = html;
   
   // チェック済みカウント更新
   updateCheckedCount();
   
   priceEl.innerHTML = `
-    <div class="price-title">💰 第${shoppingWeek}週の購入価格予想（${peopleCount}人前）</div>
+    <div class="price-title">💰 ${shoppingMonth+1}月 第${shoppingWeek}週の購入価格予想（${peopleCount}人前）</div>
     <div class="price-total">合計：約${Math.round(totalPrice).toLocaleString()}円</div>
   `;
 }
@@ -3320,7 +3482,7 @@ function addMemo() {
   const text = input.value.trim();
   if(!text) return;
   
-  const weekKey = 'week' + shoppingWeek;
+  const weekKey = `${shoppingYear}-${shoppingMonth+1}-week${shoppingWeek}`;
   if(!memos[weekKey]) memos[weekKey] = [];
   memos[weekKey].push(text);
   localStorage.setItem('kondateMemos', JSON.stringify(memos));
@@ -3331,7 +3493,7 @@ function addMemo() {
 }
 
 function deleteMemo(index) {
-  const weekKey = 'week' + shoppingWeek;
+  const weekKey = `${shoppingYear}-${shoppingMonth+1}-week${shoppingWeek}`;
   if(memos[weekKey]) {
     memos[weekKey].splice(index, 1);
     localStorage.setItem('kondateMemos', JSON.stringify(memos));
@@ -3341,7 +3503,7 @@ function deleteMemo(index) {
 
 function renderMemos() {
   const container = document.getElementById('memoList');
-  const weekKey = 'week' + shoppingWeek;
+  const weekKey = `${shoppingYear}-${shoppingMonth+1}-week${shoppingWeek}`;
   const weekMemos = memos[weekKey] || [];
   
   if(weekMemos.length === 0) {
@@ -3415,6 +3577,31 @@ function loadCustomMenus() {
 }
 
 // =====================
+// 買い物月切り替え
+// =====================
+function changeShoppingMonth(dir) {
+  shoppingMonth += dir;
+  if(shoppingMonth < 0) {
+    shoppingMonth = 11;
+    shoppingYear--;
+  } else if(shoppingMonth > 11) {
+    shoppingMonth = 0;
+    shoppingYear++;
+  }
+  shoppingWeek = 1;
+  document.querySelectorAll('.week-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', i === 0);
+  });
+  updateShoppingMonthTitle();
+  renderShop();
+  renderMemos();
+}
+
+function updateShoppingMonthTitle() {
+  document.getElementById('shoppingMonthTitle').textContent = `${shoppingYear}年${shoppingMonth + 1}月`;
+}
+
+// =====================
 // 買い物チェック
 // =====================
 let checkedItems = JSON.parse(localStorage.getItem('kondateChecked') || '{}');
@@ -3422,7 +3609,7 @@ let checkedItems = JSON.parse(localStorage.getItem('kondateChecked') || '{}');
 function checkItem(el) {
   const item = el.parentElement;
   const itemName = item.querySelector('.item-name').textContent;
-  const weekKey = 'week' + shoppingWeek;
+  const weekKey = `${shoppingYear}-${shoppingMonth+1}-week${shoppingWeek}`;
   
   if(!checkedItems[weekKey]) checkedItems[weekKey] = [];
   checkedItems[weekKey].push(itemName);
@@ -3436,7 +3623,7 @@ function checkItem(el) {
 }
 
 function resetCheckedItems() {
-  const weekKey = 'week' + shoppingWeek;
+  const weekKey = `${shoppingYear}-${shoppingMonth+1}-week${shoppingWeek}`;
   checkedItems[weekKey] = [];
   localStorage.setItem('kondateChecked', JSON.stringify(checkedItems));
   renderShop();
@@ -3444,7 +3631,7 @@ function resetCheckedItems() {
 }
 
 function updateCheckedCount() {
-  const weekKey = 'week' + shoppingWeek;
+  const weekKey = `${shoppingYear}-${shoppingMonth+1}-week${shoppingWeek}`;
   const count = checkedItems[weekKey] ? checkedItems[weekKey].length : 0;
   const resetBtn = document.getElementById('resetChecked');
   if(resetBtn) {
