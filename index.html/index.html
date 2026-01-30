@@ -2235,8 +2235,8 @@ function generateMonthlyMenus(year, month) {
   return menus;
 }
 
-// 現在表示中の月のメニュー
-let MENUS = generateMonthlyMenus(year, month);
+// 現在表示中の月のメニュー（後で初期化）
+let MENUS = {};
 
 // 材料データ（6人前基準）
 const INGREDIENTS = {
@@ -2385,6 +2385,7 @@ const RECIPES = {
 // =====================
 let currentUser = localStorage.getItem('kondateUser') || null;
 let year = 2026, month = 0;
+MENUS = generateMonthlyMenus(year, month);
 let selectedDay = 1;
 let viewMode = 'month';
 let shoppingWeek = 1;
@@ -3287,8 +3288,9 @@ function applyRequest(id) {
   const req = requests.find(r => r.id === id);
   if(!req || !req.menu) return;
   
-  const d = new Date(req.date);
-  const day = d.getDate();
+  // 日付を解析（タイムゾーン問題を回避）
+  const dateParts = req.date.split('-');
+  const day = parseInt(dateParts[2], 10);
   
   // MENUSを更新
   MENUS[day] = {
@@ -3541,9 +3543,9 @@ function applyVoteResult(voteId) {
   const winnerMenuId = votes0 > votes1 ? vote.options[0].menuId : vote.options[1].menuId;
   const winnerMenu = MENUS[winnerMenuId];
   
-  // 日付を解析
-  const voteDate = new Date(vote.date);
-  const day = voteDate.getDate();
+  // 日付を解析（タイムゾーン問題を回避）
+  const dateParts = vote.date.split('-');
+  const day = parseInt(dateParts[2], 10);
   
   // カレンダーに反映（メモリ上のMENUSを更新）
   MENUS[day] = winnerMenu;
