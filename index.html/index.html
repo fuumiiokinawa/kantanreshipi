@@ -1014,25 +1014,48 @@ function MoaiManager() {
             {/* 未払いアラート */}
             {(() => {
               const delinquents = getDelinquentMembers();
-              const serious = delinquents.filter(d => d.unpaidMonths >= 2);
-              if (serious.length > 0) {
+              if (delinquents.length > 0) {
+                const serious = delinquents.filter(d => d.unpaidMonths >= 2);
+                const totalAmount = delinquents.reduce((sum, d) => sum + d.unpaidAmount, 0);
                 return (
-                  <div style={{background: '#fef2f2', border: '2px solid #fecaca', borderRadius: 14, padding: 16}}>
-                    <h4 style={{color: '#dc2626', fontSize: 15, fontWeight: 700, marginBottom: 10}}>⚠️ 滞納アラート</h4>
-                    {serious.map(m => (
+                  <div style={{background: serious.length > 0 ? '#fef2f2' : '#fffbeb', border: `2px solid ${serious.length > 0 ? '#fecaca' : '#fde68a'}`, borderRadius: 14, padding: 16}}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10}}>
+                      <h4 style={{color: serious.length > 0 ? '#dc2626' : '#d97706', fontSize: 15, fontWeight: 700, margin: 0}}>
+                        {serious.length > 0 ? '⚠️ 滞納アラート' : '📋 未払い状況'}
+                      </h4>
+                      <span style={{background: serious.length > 0 ? '#dc2626' : '#f59e0b', color: '#fff', padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600}}>
+                        {delinquents.length}名 / ¥{(totalAmount/1000).toFixed(0)}千
+                      </span>
+                    </div>
+                    {delinquents.slice(0, 3).map(m => (
                       <div key={m.id} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #fecaca'}}>
                         <span style={{fontWeight: 600}}>{m.name}</span>
                         <div style={{textAlign: 'right'}}>
-                          <div style={{color: '#dc2626', fontWeight: 700}}>{m.unpaidMonths}ヶ月滞納</div>
-                          <div style={{fontSize: 12, color: '#b91c1c'}}>¥{(m.unpaidAmount/1000).toFixed(0)}千</div>
+                          <div style={{color: m.unpaidMonths >= 2 ? '#dc2626' : '#d97706', fontWeight: 700}}>{m.unpaidMonths}ヶ月</div>
+                          <div style={{fontSize: 12, color: '#64748b'}}>¥{m.unpaidAmount.toLocaleString()}</div>
                         </div>
                       </div>
                     ))}
-                    {isAdmin && (
-                      <button style={{...S.linkBtn, color: '#dc2626', marginTop: 8}} onClick={() => setShowModal('reminderLine')}>
-                        📱 催促メッセージを作成
-                      </button>
+                    {delinquents.length > 3 && (
+                      <div style={{fontSize: 12, color: '#64748b', padding: '8px 0'}}>...他 {delinquents.length - 3}名</div>
                     )}
+                    <button 
+                      style={{
+                        width: '100%',
+                        marginTop: 12,
+                        padding: '12px',
+                        background: '#06c755',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 10,
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }} 
+                      onClick={() => setShowModal('reminderLine')}
+                    >
+                      📱 LINE催促メッセージを作成
+                    </button>
                   </div>
                 );
               }
@@ -1424,7 +1447,7 @@ function MoaiManager() {
 
         {/* 一括入金 */}
         {currentView === 'bulk' && (
-          <BulkPaymentView group={selectedGroup} month={selectedMonth} setMonth={setSelectedMonth} getMonthlyStatus={getMonthlyStatus} onSubmit={handleBulkPayment} isAdmin={isAdmin} />
+          <BulkPaymentView group={selectedGroup} month={selectedMonth} setMonth={setSelectedMonth} getMonthlyStatus={getMonthlyStatus} onSubmit={handleBulkPayment} isAdmin={isAdmin} onOpenReminder={() => setShowModal('reminderLine')} delinquents={getDelinquentMembers()} />
         )}
 
         {/* 受取 */}
@@ -1484,8 +1507,76 @@ function MoaiManager() {
           <div style={S.view}>
             <div style={S.viewHeader}>
               <h3 style={S.viewTitle}>📊 一覧表</h3>
-              <button style={S.exportBtn} onClick={() => setShowModal('export')}>📥</button>
+              <div style={{display: 'flex', gap: 8}}>
+                <button style={{...S.exportBtn, background: '#06c755'}} onClick={() => {
+                  // テキスト形式で一覧表を生成
+                  const monthList = getMonthList();
+                  const currentMonth = new Date().toISOString().slice(0, 7);
+                  const targetMonths = monthList.filter(m => m <= currentMonth); // 開始月から当月まで
+                  
+                  let text = `📊 ${selectedGroup.name} 入金状況\n`;
+                  text += `━━━━━━━━━━━━━━━━\n`;
+                  text += `📅 ${new Date().toLocaleDateString('ja-JP')} 現在\n`;
+                  text += `📆 ${selectedGroup.startMonth?.replace('-', '年') + '月'}〜${currentMonth.replace('-', '年') + '月'}（${targetMonths.length}ヶ月）\n\n`;
+                  
+                  // 凡例
+                  text += `【凡例】✅済 ／ ⬜未 ／ 🔄相殺\n\n`;
+                  
+                  // 各メンバー（縦型レイアウト）
+                  selectedGroup.members.forEach((m, idx) => {
+                    const bal = getMemberBalance(m.id);
+                    const paidCount = targetMonths.filter(month => {
+                      const info = getMemberPaymentForMonth(m.id, month);
+                      return info.status === 'paid' || info.status === 'offset';
+                    }).length;
+                    const unpaidCount = targetMonths.length - paidCount;
+                    
+                    text += `${idx + 1}. ${m.name}\n`;
+                    
+                    // 月ごとのステータスを行で表示
+                    let statusLine = '';
+                    targetMonths.forEach(month => {
+                      const info = getMemberPaymentForMonth(m.id, month);
+                      const mark = info.status === 'paid' ? '✅' : info.status === 'offset' ? '🔄' : '⬜';
+                      statusLine += mark;
+                    });
+                    text += `　${statusLine}\n`;
+                    text += `　→ ${paidCount}/${targetMonths.length}済`;
+                    if (bal.balance < 0) {
+                      text += ` ⚠️未払¥${Math.abs(bal.balance).toLocaleString()}`;
+                    }
+                    text += `\n\n`;
+                  });
+                  
+                  text += `━━━━━━━━━━━━━━━━\n`;
+                  
+                  // サマリー
+                  const delinquents = selectedGroup.members.filter(m => getMemberBalance(m.id).balance < 0);
+                  const totalUnpaid = delinquents.reduce((sum, m) => sum + Math.abs(getMemberBalance(m.id).balance), 0);
+                  
+                  if (delinquents.length > 0) {
+                    text += `⚠️ 未払い: ${delinquents.length}名 / ¥${totalUnpaid.toLocaleString()}\n`;
+                  } else {
+                    text += `✅ 全員入金済み！\n`;
+                  }
+                  
+                  if (selectedGroup.lineGroupUrl) {
+                    window.open(`https://line.me/R/msg/text/?${encodeURIComponent(text)}`, '_blank');
+                  } else {
+                    navigator.clipboard?.writeText(text);
+                    notify('コピーしました！LINEに貼り付けてください');
+                  }
+                }}>📱</button>
+                <button style={S.exportBtn} onClick={() => setShowModal('export')}>📥</button>
+              </div>
             </div>
+            
+            {/* LINE共有の説明 */}
+            <div style={{fontSize: 11, color: '#64748b', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8}}>
+              <span>📱 = LINE共有（全期間）</span>
+              <span>📥 = CSV出力</span>
+            </div>
+            
             <div style={S.tableWrap}>
               <table style={S.table}>
                 <thead><tr>
@@ -2622,6 +2713,10 @@ function HelpView({ isAdmin, group }) {
           <div style={styles.tableRow}><span style={{...styles.tableIcon, background: '#fee2e2'}}>　</span><span style={styles.tableLabel}>赤</span><span style={styles.tableDesc}>未払い</span></div>
           <div style={styles.tableRow}><span style={{...styles.tableIcon, background: '#fef3c7'}}>相</span><span style={styles.tableLabel}>黄</span><span style={styles.tableDesc}>受取金から相殺</span></div>
         </div>
+        <div style={styles.subSection}>
+          <div style={styles.subTitle}>一覧表のLINE共有</div>
+          <p style={styles.p}>「📊 一覧」タブの📱ボタンで、開始月から当月までの入金状況をLINEで共有できます。</p>
+        </div>
       </Section>
       
       {/* 参加率ランキング */}
@@ -2777,6 +2872,7 @@ function HelpView({ isAdmin, group }) {
         <div style={styles.subSection}>
           <div style={styles.subTitle}>滞納催促</div>
           <ul style={styles.ul}>
+            <li>ホーム画面 or 入金画面から「📱 LINE催促メッセージ」</li>
             <li>「👥 全員向け一括」: 滞納者全員の名前・金額をグループに送信</li>
             <li>「👤 個別送信」: 特定の人に個別メッセージ</li>
             <li>各メンバーの滞納月数・累計金額を表示</li>
@@ -3030,7 +3126,7 @@ function HelpView({ isAdmin, group }) {
   );
 }
 
-function BulkPaymentView({ group, month, setMonth, getMonthlyStatus, onSubmit, isAdmin }) {
+function BulkPaymentView({ group, month, setMonth, getMonthlyStatus, onSubmit, isAdmin, onOpenReminder, delinquents }) {
   const [selected, setSelected] = React.useState([]);
   const [multiMonth, setMultiMonth] = React.useState(false);
   const [monthRange, setMonthRange] = React.useState({ from: month, to: month });
@@ -3059,10 +3155,37 @@ function BulkPaymentView({ group, month, setMonth, getMonthlyStatus, onSubmit, i
 
   const totalMonths = getMonthsBetween().length;
   const totalAmount = (group.monthlyAmount + group.savingsAmount) * selected.length * totalMonths;
+  const totalUnpaid = delinquents ? delinquents.reduce((sum, d) => sum + d.unpaidAmount, 0) : 0;
 
   return (
     <div style={S.view}>
       <h3 style={S.viewTitle}>✅ 一括入金</h3>
+      
+      {/* 滞納催促ボタン */}
+      {delinquents && delinquents.length > 0 && (
+        <div style={{background: '#fef2f2', border: '2px solid #fecaca', borderRadius: 12, padding: 14, marginBottom: 16}}>
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10}}>
+            <span style={{fontWeight: 600, color: '#dc2626'}}>⚠️ 未払い: {delinquents.length}名</span>
+            <span style={{fontSize: 14, color: '#dc2626', fontWeight: 700}}>¥{totalUnpaid.toLocaleString()}</span>
+          </div>
+          <button 
+            onClick={onOpenReminder}
+            style={{
+              width: '100%',
+              padding: '12px',
+              background: '#06c755',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 10,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            📱 LINE催促メッセージを作成
+          </button>
+        </div>
+      )}
       
       {/* 複数月モード切り替え */}
       <div style={{marginBottom: 12}}>
