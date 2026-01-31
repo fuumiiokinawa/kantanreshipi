@@ -241,6 +241,79 @@ body {
   border-color: var(--burgundy);
 }
 
+/* 今日の献立カード */
+.today-menu-card {
+  background: linear-gradient(135deg, var(--burgundy), var(--burgundy-light));
+  border-radius: 16px;
+  padding: 1.2rem;
+  margin-bottom: 1rem;
+  color: white;
+  box-shadow: 0 4px 20px rgba(114, 47, 55, 0.3);
+}
+
+.today-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.8rem;
+}
+
+.today-menu-label {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.today-menu-date {
+  font-size: 0.85rem;
+  background: rgba(255,255,255,0.2);
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+}
+
+.today-menu-main {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--gold-light);
+}
+
+.today-menu-sub {
+  font-size: 0.85rem;
+  opacity: 0.85;
+  margin-bottom: 1rem;
+}
+
+.today-menu-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.today-menu-btn {
+  flex: 1;
+  padding: 0.7rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: rgba(255,255,255,0.15);
+  color: white;
+}
+
+.today-menu-btn:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+.today-menu-btn.line {
+  background: #06C755;
+}
+
+.today-menu-btn.line:hover {
+  background: #05b04c;
+}
+
 /* カレンダー */
 .calendar {
   display: grid;
@@ -1508,8 +1581,47 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   align-items: center;
+}
+
+.shop-share-btns {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.shop-line-btn {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.9rem 1rem;
+  background: #06C755;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.shop-line-btn:hover {
+  background: #05b04c;
+  transform: translateY(-1px);
+}
+
+.shop-copy-btn {
+  padding: 0.9rem 1.5rem;
+  background: var(--gold-gradient);
+  color: var(--bg-primary);
+  border: none;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-family: inherit;
 }
 
 .shopping-title {
@@ -2024,6 +2136,20 @@ body {
     </div>
 
     <div id="monthView">
+      <!-- 今日の献立カード -->
+      <div class="today-menu-card" id="todayMenuCard">
+        <div class="today-menu-header">
+          <span class="today-menu-label">🍽️ 今日の献立</span>
+          <span class="today-menu-date" id="todayMenuDate"></span>
+        </div>
+        <div class="today-menu-main" id="todayMenuMain"></div>
+        <div class="today-menu-sub" id="todayMenuSub"></div>
+        <div class="today-menu-actions">
+          <button class="today-menu-btn" onclick="openTodayPanel()">📖 詳細を見る</button>
+          <button class="today-menu-btn line" onclick="shareToLine(new Date().getDate())">📱 LINE共有</button>
+        </div>
+      </div>
+      
       <div class="calendar" id="calendarGrid">
         <div class="weekday">日</div>
         <div class="weekday">月</div>
@@ -2118,7 +2244,12 @@ body {
         <button class="week-btn" data-week="3">第3週</button>
         <button class="week-btn" data-week="4">第4週</button>
       </div>
-      <button class="copy-btn" onclick="copyList()">📋 コピー</button>
+    </div>
+    
+    <!-- 共有ボタンエリア -->
+    <div class="shop-share-btns">
+      <button class="shop-line-btn" onclick="shareShoppingListToLine()">📱 LINEで買い物リストを送る</button>
+      <button class="shop-copy-btn" onclick="copyList()">📋 コピー</button>
       <button class="reset-btn" id="resetChecked" onclick="resetCheckedItems()" style="display:none;">🔄 リセット</button>
     </div>
     
@@ -3273,6 +3404,34 @@ function renderCalendar() {
     el.onclick = () => openPanel(d);
     grid.appendChild(el);
   }
+  
+  // 今日の献立カードを更新
+  updateTodayMenuCard();
+}
+
+function updateTodayMenuCard() {
+  const today = new Date();
+  const todayDay = today.getDate();
+  
+  // 今月を表示中の場合のみ表示
+  if(year !== today.getFullYear() || month !== today.getMonth()) {
+    document.getElementById('todayMenuCard').style.display = 'none';
+    return;
+  }
+  
+  document.getElementById('todayMenuCard').style.display = 'block';
+  
+  const menu = MENUS[todayDay];
+  if(!menu) return;
+  
+  document.getElementById('todayMenuDate').textContent = `${month+1}月${todayDay}日（${WEEKDAYS[today.getDay()]}）`;
+  document.getElementById('todayMenuMain').textContent = menu.main;
+  document.getElementById('todayMenuSub').textContent = `${menu.side} / ${menu.soup} / ${menu.salad}`;
+}
+
+function openTodayPanel() {
+  const today = new Date();
+  openPanel(today.getDate());
 }
 
 function renderWeekView() {
@@ -3555,6 +3714,21 @@ function openPanel(d) {
       </div>
     `;
   });
+  
+  // LINE共有ボタンを追加
+  html += `
+    <div style="margin-top:1.5rem;padding:0 0.5rem;">
+      <button class="line-share-btn" onclick="shareToLine(${d})" style="width:100%;">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:24px;height:24px;">
+          <path d="M12 2C6.477 2 2 5.804 2 10.5c0 2.633 1.32 4.982 3.387 6.528-.227.797-.764 2.47-1.06 3.352-.086.258.02.546.26.68.12.067.254.1.387.1.148 0 .296-.042.423-.126.945-.622 3.47-2.284 4.21-2.778.463.066.936.1 1.393.1 5.523 0 10-3.804 10-8.5S17.523 2 12 2z"/>
+        </svg>
+        LINEで献立と買い物リストを共有
+      </button>
+      <button class="copy-btn" onclick="copyMenuToClipboard(${d})" style="width:100%;margin-top:0.5rem;">
+        📋 テキストをコピー
+      </button>
+    </div>
+  `;
   
   content.innerHTML = html;
   document.getElementById('panel').classList.add('open');
@@ -3879,14 +4053,71 @@ function renderShop() {
   `;
 }
 
-function copyList() {
-  const ratio = peopleCount / 6;
-  let text = `【第${shoppingWeek}週の買い物リスト（${peopleCount}人前）】\n\n`;
-  text += `■ 肉類\n・鶏もも肉: ${Math.round(900*ratio)}g\n・豚ロース: ${Math.round(600*ratio)}g\n\n`;
-  text += `■ 魚介\n・鮭: ${Math.ceil(6*ratio)}切\n\n`;
-  text += `■ 野菜\n・玉ねぎ: ${Math.ceil(4*ratio)}個\n・にんじん: ${Math.ceil(3*ratio)}本\n`;
+function generateShoppingListText() {
+  const shopMenus = generateMonthlyMenus(shoppingYear, shoppingMonth);
   
+  // カスタムメニューを上書き
+  const customMenus = JSON.parse(localStorage.getItem('kondateCustomMenus') || '{}');
+  Object.entries(customMenus).forEach(([day, menuData]) => {
+    if(typeof menuData === 'object' && menuData.main) {
+      shopMenus[day] = menuData;
+    } else if(typeof menuData === 'number' && ALL_MENUS[menuData]) {
+      shopMenus[day] = ALL_MENUS[menuData];
+    }
+  });
+  
+  const ratio = peopleCount / 6;
+  const startDay = (shoppingWeek - 1) * 7 + 1;
+  const lastDate = new Date(shoppingYear, shoppingMonth + 1, 0).getDate();
+  const endDay = Math.min(shoppingWeek * 7, lastDate);
+  
+  const list = { meat: {}, fish: {}, veg: {}, dairy: {}, other: {} };
+  
+  for(let d = startDay; d <= endDay; d++) {
+    const menu = shopMenus[d];
+    if(!menu) continue;
+    
+    ['main', 'side', 'soup', 'salad'].forEach(type => {
+      const dishName = menu[type];
+      const recipe = RECIPES[dishName];
+      if(recipe && recipe.ing) {
+        recipe.ing.forEach(([name, amt]) => {
+          const info = INGREDIENTS[name];
+          if(info) {
+            if(!list[info.cat][name]) list[info.cat][name] = { amt: 0, unit: info.unit };
+            list[info.cat][name].amt += amt * ratio;
+          }
+        });
+      }
+    });
+  }
+  
+  const catNames = { meat: '🥩 肉類', fish: '🐟 魚介', veg: '🥬 野菜', dairy: '🥛 卵・乳製品', other: '📦 その他' };
+  
+  let text = `🛒 ${shoppingMonth+1}月 第${shoppingWeek}週の買い物リスト（${peopleCount}人前）\n`;
+  text += `━━━━━━━━━━━━━━\n`;
+  
+  Object.entries(catNames).forEach(([cat, name]) => {
+    if(Object.keys(list[cat]).length > 0) {
+      text += `\n${name}\n`;
+      Object.entries(list[cat]).forEach(([item, data]) => {
+        const amt = Math.ceil(data.amt * 10) / 10;
+        text += `・${item} ${amt}${data.unit}\n`;
+      });
+    }
+  });
+  
+  return text;
+}
+
+function copyList() {
+  const text = generateShoppingListText();
   navigator.clipboard.writeText(text).then(() => toast('コピーしました'));
+}
+
+function shareShoppingListToLine() {
+  const text = generateShoppingListText();
+  window.open(`https://line.me/R/msg/text/?${encodeURIComponent(text)}`, '_blank');
 }
 
 // =====================
