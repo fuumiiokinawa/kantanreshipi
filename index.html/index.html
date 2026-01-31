@@ -2096,7 +2096,7 @@ body {
         </div>
       </div>
       <button class="vote-btn" onclick="createVote()">投票を作成</button>
-      <button class="line-btn" onclick="shareToLine()">📱 LINEで家族に共有</button>
+      <button class="line-btn" onclick="shareVoteToLine()">📱 LINEで家族に共有</button>
     </div>
     <div id="voteList"></div>
   </section>
@@ -3759,7 +3759,7 @@ function renderVotes() {
   renderRanking();
 }
 
-function shareToLine() {
+function shareVoteToLine() {
   const text = `🍽️ 献立の投票をお願いします！\n\n下のリンクから投票してね👇\n${window.location.href}`;
   window.open(`https://line.me/R/msg/text/?${encodeURIComponent(text)}`, '_blank');
 }
