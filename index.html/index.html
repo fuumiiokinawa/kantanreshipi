@@ -2298,16 +2298,52 @@ ${unpaidSummary.length > 0 ? `\nお心当たりのある方は、
 
 // 滞納者催促メッセージ
 function DelinquentReminderModal({ group, delinquents, onClose, notify }) {
+  const [messageType, setMessageType] = React.useState('all'); // 'all' or 'individual'
   const [selectedMember, setSelectedMember] = React.useState(delinquents[0]?.id || '');
   const member = delinquents.find(d => d.id === selectedMember);
   
-  const message = member ? `${member.name}さん
+  // 全体の未払い総額
+  const totalUnpaidAmount = delinquents.reduce((sum, d) => sum + d.unpaidAmount, 0);
+  const totalUnpaidMonths = delinquents.reduce((sum, d) => sum + d.unpaidMonths, 0);
+  
+  // 全体向けメッセージ（グループLINE用）
+  const allMessage = `🌺 ${group.name} 入金確認のお願い 🌺
+
+━━━━━━━━━━━━━━━━
+⚠️ 未入金状況のお知らせ
+━━━━━━━━━━━━━━━━
+
+現在、以下の方に未入金があります。
+ご確認をお願いいたします🙏
+
+${delinquents.map(d => 
+`📌 ${d.name}さん
+　　${d.unpaidMonths}ヶ月分 / ¥${d.unpaidAmount.toLocaleString()}`
+).join('\n\n')}
+
+━━━━━━━━━━━━━━━━
+💰 未入金合計: ¥${totalUnpaidAmount.toLocaleString()}
+🏦 振込先: ${group.bankInfo || '（要確認）'}
+━━━━━━━━━━━━━━━━
+
+何かご事情がありましたら、
+お気軽にご連絡ください。`;
+
+  // 個別メッセージ
+  const individualMessage = member ? `${member.name}さん
 
 お疲れ様です。
 ${group.name}の模合について確認させてください。
 
-現在 ${member.unpaidMonths}ヶ月分（¥${(member.unpaidAmount/1000).toFixed(0)}千）が未入金となっております。
+━━━━━━━━━━━━━━━━
+⏳ 未入金: ${member.unpaidMonths}ヶ月分
+💰 金額: ¥${member.unpaidAmount.toLocaleString()}
+━━━━━━━━━━━━━━━━
 
+${member.unpaidMonthsList && member.unpaidMonthsList.length > 0 ? 
+`📅 対象月:
+${member.unpaidMonthsList.map(m => `　・${m.replace('-', '年') + '月'}`).join('\n')}
+` : ''}
 お忙しいところ恐縮ですが、
 ご確認いただけますでしょうか。
 
@@ -2317,6 +2353,8 @@ ${group.name}の模合について確認させてください。
 ━━━━━━━━━━━━━━━━
 🏦 振込先: ${group.bankInfo || '（要確認）'}
 ━━━━━━━━━━━━━━━━` : '';
+
+  const message = messageType === 'all' ? allMessage : individualMessage;
 
   const handleCopy = () => {
     navigator.clipboard?.writeText(message);
@@ -2329,25 +2367,98 @@ ${group.name}の模合について確認させてください。
 
   return (
     <div style={S.form}>
-      <h3 style={S.formTitle}>📱 催促メッセージ</h3>
+      <h3 style={S.formTitle}>📱 滞納催促メッセージ</h3>
       
-      <label style={S.label}>送信先</label>
-      <select value={selectedMember} onChange={e => setSelectedMember(e.target.value)} style={S.input}>
-        {delinquents.map(d => (
-          <option key={d.id} value={d.id}>{d.name}（{d.unpaidMonths}ヶ月滞納）</option>
-        ))}
-      </select>
+      {/* 未払いサマリー表示 */}
+      <div style={{background: '#fef2f2', padding: 14, borderRadius: 10, marginBottom: 12, border: '2px solid #fecaca'}}>
+        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10}}>
+          <span style={{fontWeight: 700, color: '#dc2626', fontSize: 15}}>⚠️ 滞納状況</span>
+          <span style={{background: '#dc2626', color: '#fff', padding: '4px 10px', borderRadius: 12, fontSize: 13, fontWeight: 600}}>
+            {delinquents.length}名 / ¥{(totalUnpaidAmount/1000).toFixed(0)}千
+          </span>
+        </div>
+        <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
+          {delinquents.map(d => (
+            <div key={d.id} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: '#fff', borderRadius: 6, border: '1px solid #fecaca'}}>
+              <div>
+                <span style={{fontWeight: 600}}>{d.name}</span>
+                <span style={{fontSize: 12, color: '#64748b', marginLeft: 8}}>{d.unpaidMonths}ヶ月</span>
+              </div>
+              <span style={{color: '#dc2626', fontWeight: 700}}>¥{d.unpaidAmount.toLocaleString()}</span>
+            </div>
+          ))}
+        </div>
+      </div>
       
-      <div style={{background: '#fef2f2', padding: 14, borderRadius: 10, whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.6, maxHeight: 250, overflow: 'auto', marginTop: 10}}>
+      {/* メッセージタイプ切り替え */}
+      <div style={{display: 'flex', gap: 8, marginBottom: 12}}>
+        <button
+          onClick={() => setMessageType('all')}
+          style={{
+            flex: 1,
+            padding: '10px',
+            background: messageType === 'all' ? '#dc2626' : '#f1f5f9',
+            color: messageType === 'all' ? '#fff' : '#64748b',
+            border: 'none',
+            borderRadius: 8,
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: 'pointer'
+          }}
+        >
+          👥 全員向け一括
+        </button>
+        <button
+          onClick={() => setMessageType('individual')}
+          style={{
+            flex: 1,
+            padding: '10px',
+            background: messageType === 'individual' ? '#dc2626' : '#f1f5f9',
+            color: messageType === 'individual' ? '#fff' : '#64748b',
+            border: 'none',
+            borderRadius: 8,
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: 'pointer'
+          }}
+        >
+          👤 個別送信
+        </button>
+      </div>
+      
+      {/* 個別の場合はメンバー選択 */}
+      {messageType === 'individual' && (
+        <div style={{marginBottom: 12}}>
+          <label style={S.label}>送信先</label>
+          <select value={selectedMember} onChange={e => setSelectedMember(e.target.value)} style={S.input}>
+            {delinquents.map(d => (
+              <option key={d.id} value={d.id}>
+                {d.name}（{d.unpaidMonths}ヶ月 / ¥{d.unpaidAmount.toLocaleString()}）
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      
+      {/* メッセージプレビュー */}
+      <div style={{background: '#f8fafc', padding: 14, borderRadius: 10, whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.6, maxHeight: 200, overflow: 'auto'}}>
         {message}
       </div>
       
       <div style={S.btnRow}>
         <button style={S.cancelBtn} onClick={onClose}>閉じる</button>
-        <button style={{...S.submitBtn, background: '#06c755'}} onClick={handleLineShare}>💬 LINEで送る</button>
+        {group.lineGroupUrl && messageType === 'all' ? (
+          <button style={{...S.submitBtn, background: '#06c755'}} onClick={handleLineShare}>💬 LINEで送る</button>
+        ) : (
+          <button style={{...S.submitBtn, background: '#06c755'}} onClick={messageType === 'all' ? handleCopy : handleLineShare}>
+            {messageType === 'all' ? '📋 コピー' : '💬 LINEで送る'}
+          </button>
+        )}
       </div>
       <div style={{fontSize: 11, color: '#94a3b8', textAlign: 'center', marginTop: 8}}>
-        ※ 個別メッセージなのでLINE送信画面で送り先を選択してください
+        {messageType === 'all' 
+          ? (group.lineGroupUrl ? '💡 グループLINEに一括送信されます' : '💡 設定でLINEグループURLを登録すると直接送れます')
+          : '💡 個別メッセージ - LINE送信画面で送り先を選択してください'}
       </div>
     </div>
   );
@@ -2654,14 +2765,31 @@ function HelpView({ isAdmin, group }) {
       </Section>
       
       {/* LINE通知 */}
-      <Section title="📱 LINE通知の作成">
-        <p style={styles.p}>コピペで使えるメッセージを自動生成できます。</p>
-        <div style={styles.table}>
-          <div style={styles.tableRow}><span style={styles.tableLabel}>入金リマインド</span><span style={styles.tableDesc}>月初めに支払いを促す</span></div>
-          <div style={styles.tableRow}><span style={styles.tableLabel}>滞納催促</span><span style={styles.tableDesc}>2ヶ月以上未払いの人へ</span></div>
-          <div style={styles.tableRow}><span style={styles.tableLabel}>飲み会お知らせ</span><span style={styles.tableDesc}>日時・場所・参加者を通知</span></div>
-          <div style={styles.tableRow}><span style={styles.tableLabel}>イベント出欠</span><span style={styles.tableDesc}>旅行等の出欠確認を通知</span></div>
+      <Section title="📱 LINE通知機能">
+        <p style={styles.p}>LINEグループURLを設定すると、ボタン1つで直接送信できます。</p>
+        <div style={styles.subSection}>
+          <div style={styles.subTitle}>入金リマインド</div>
+          <ul style={styles.ul}>
+            <li>「📅 月別通知」: 特定月の未払い者に通知</li>
+            <li>「📋 全体サマリー」: 全月の未払い状況を一覧送信</li>
+          </ul>
         </div>
+        <div style={styles.subSection}>
+          <div style={styles.subTitle}>滞納催促</div>
+          <ul style={styles.ul}>
+            <li>「👥 全員向け一括」: 滞納者全員の名前・金額をグループに送信</li>
+            <li>「👤 個別送信」: 特定の人に個別メッセージ</li>
+            <li>各メンバーの滞納月数・累計金額を表示</li>
+          </ul>
+        </div>
+        <div style={styles.subSection}>
+          <div style={styles.subTitle}>その他の通知</div>
+          <ul style={styles.ul}>
+            <li>飲み会お知らせ: 日時・場所・参加者</li>
+            <li>イベント出欠: 旅行等の出欠確認</li>
+          </ul>
+        </div>
+        <div style={styles.tip}>💡 設定画面でLINEグループURLを登録してください</div>
       </Section>
       
       {/* トラブルシューティング */}
