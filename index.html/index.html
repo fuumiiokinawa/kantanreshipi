@@ -3581,36 +3581,6 @@ function validateData() {
   return { errors, warnings };
 }
 
-// データ再読み込み関数
-function reloadData() {
-  // ボタンにアニメーション
-  const btn = document.querySelector('.reload-btn');
-  btn.style.transform = 'rotate(360deg)';
-  setTimeout(() => { btn.style.transform = ''; }, 500);
-  
-  // Firebaseの場合はリスナーが自動更新するので、画面だけ再描画
-  if(firebaseEnabled && db) {
-    // 現在のタブに応じて再描画
-    const activeTab = document.querySelector('.nav-tab.active');
-    const tabId = activeTab ? activeTab.dataset.tab : 'calendar';
-    
-    if(tabId === 'calendar') {
-      if(viewMode === 'month') renderCalendar();
-      else if(viewMode === 'week') renderWeekView();
-      else renderDayView();
-    } else if(tabId === 'shopping') {
-      renderShop();
-      renderMemos();
-    } else if(tabId === 'vote') {
-      renderVotes();
-    }
-    toast('データを更新しました');
-  } else {
-    // localStorageの場合はページリロード
-    location.reload();
-  }
-}
-
 window.onload = function() {
   // データ整合性チェック（開発用）
   validateData();
@@ -3775,6 +3745,11 @@ function renderCalendar() {
   const monthCustom = customMenus[storageKey] || {};
   Object.entries(monthCustom).forEach(([day, menuData]) => {
     if(typeof menuData === 'object' && menuData.main) {
+      // calがない場合はALL_MENUSから取得
+      if(!menuData.cal) {
+        const fullMenu = ALL_MENUS.find(m => m.main === menuData.main);
+        menuData.cal = fullMenu ? fullMenu.cal : { main: 350, side: 100, soup: 60, salad: 40 };
+      }
       MENUS[parseInt(day)] = menuData;
     } else if(typeof menuData === 'number' && ALL_MENUS[menuData]) {
       MENUS[parseInt(day)] = ALL_MENUS[menuData];
@@ -3785,6 +3760,11 @@ function renderCalendar() {
     if(!isNaN(key) && !monthCustom[key]) {
       const day = parseInt(key);
       if(typeof menuData === 'object' && menuData.main) {
+        // calがない場合はALL_MENUSから取得
+        if(!menuData.cal) {
+          const fullMenu = ALL_MENUS.find(m => m.main === menuData.main);
+          menuData.cal = fullMenu ? fullMenu.cal : { main: 350, side: 100, soup: 60, salad: 40 };
+        }
         MENUS[day] = menuData;
       } else if(typeof menuData === 'number' && ALL_MENUS[menuData]) {
         MENUS[day] = ALL_MENUS[menuData];
@@ -3873,6 +3853,11 @@ function renderWeekView() {
   const monthCustom = customMenus[storageKey] || {};
   Object.entries(monthCustom).forEach(([day, menuData]) => {
     if(typeof menuData === 'object' && menuData.main) {
+      // calがない場合はALL_MENUSから取得
+      if(!menuData.cal) {
+        const fullMenu = ALL_MENUS.find(m => m.main === menuData.main);
+        menuData.cal = fullMenu ? fullMenu.cal : { main: 350, side: 100, soup: 60, salad: 40 };
+      }
       MENUS[parseInt(day)] = menuData;
     } else if(typeof menuData === 'number' && ALL_MENUS[menuData]) {
       MENUS[parseInt(day)] = ALL_MENUS[menuData];
@@ -3883,6 +3868,11 @@ function renderWeekView() {
     if(!isNaN(key) && !monthCustom[key]) {
       const day = parseInt(key);
       if(typeof menuData === 'object' && menuData.main) {
+        // calがない場合はALL_MENUSから取得
+        if(!menuData.cal) {
+          const fullMenu = ALL_MENUS.find(m => m.main === menuData.main);
+          menuData.cal = fullMenu ? fullMenu.cal : { main: 350, side: 100, soup: 60, salad: 40 };
+        }
         MENUS[day] = menuData;
       } else if(typeof menuData === 'number' && ALL_MENUS[menuData]) {
         MENUS[day] = ALL_MENUS[menuData];
@@ -3949,6 +3939,11 @@ function renderDayView() {
   const monthCustom = customMenus[storageKey] || {};
   Object.entries(monthCustom).forEach(([day, menuData]) => {
     if(typeof menuData === 'object' && menuData.main) {
+      // calがない場合はALL_MENUSから取得
+      if(!menuData.cal) {
+        const fullMenu = ALL_MENUS.find(m => m.main === menuData.main);
+        menuData.cal = fullMenu ? fullMenu.cal : { main: 350, side: 100, soup: 60, salad: 40 };
+      }
       MENUS[parseInt(day)] = menuData;
     } else if(typeof menuData === 'number' && ALL_MENUS[menuData]) {
       MENUS[parseInt(day)] = ALL_MENUS[menuData];
@@ -3959,6 +3954,11 @@ function renderDayView() {
     if(!isNaN(key) && !monthCustom[key]) {
       const day = parseInt(key);
       if(typeof menuData === 'object' && menuData.main) {
+        // calがない場合はALL_MENUSから取得
+        if(!menuData.cal) {
+          const fullMenu = ALL_MENUS.find(m => m.main === menuData.main);
+          menuData.cal = fullMenu ? fullMenu.cal : { main: 350, side: 100, soup: 60, salad: 40 };
+        }
         MENUS[day] = menuData;
       } else if(typeof menuData === 'number' && ALL_MENUS[menuData]) {
         MENUS[day] = ALL_MENUS[menuData];
@@ -3990,7 +3990,7 @@ function renderDayView() {
   if(menu) {
     const items = [['main','🍖 メイン'],['side','🥗 副菜'],['soup','🍲 汁物'],['salad','🥬 サラダ']];
     items.forEach(([key, label]) => {
-      const itemCal = menu.cal ? menu.cal[key] : 0;
+      const itemCal = (menu.cal && menu.cal[key]) ? menu.cal[key] : 0;
       const name = menu[key];
       const recipe = RECIPES[name];
       
@@ -4139,7 +4139,7 @@ function openPanel(d) {
   const items = [['main','メイン','#d4af37'],['side','副菜','#8fbc8f'],['soup','汁物','#64b5f6'],['salad','サラダ','#81c784']];
   items.forEach(([key, label, color]) => {
     const name = menu[key];
-    const itemCal = menu.cal ? menu.cal[key] : 0;
+    const itemCal = (menu.cal && menu.cal[key]) ? menu.cal[key] : 0;
     const recipe = RECIPES[name];
     
     html += `
@@ -4836,6 +4836,10 @@ function applyRequest(id) {
     MENUS = generateMonthlyMenus(year, month);
   }
   
+  // ALL_MENUSから同じメニューを検索してカロリー情報を取得
+  const fullMenu = ALL_MENUS.find(m => m.main === req.menu.main);
+  const cal = fullMenu ? fullMenu.cal : { main: 350, side: 100, soup: 60, salad: 40 };
+  
   // MENUSを更新
   MENUS[day] = {
     ...MENUS[day],
@@ -4843,7 +4847,7 @@ function applyRequest(id) {
     side: req.menu.side,
     soup: req.menu.soup,
     salad: req.menu.salad,
-    cal: { main: 350, side: 100, soup: 60, salad: 40 }
+    cal: cal
   };
   
   // カスタムメニューに保存（年月日をキーに含める）
@@ -4959,21 +4963,18 @@ function changeMenu(day, genre) {
   
   const picked = menuList[Math.floor(Math.random() * menuList.length)];
   
+  // ALL_MENUSから同じメニューを検索してカロリー情報を取得
+  const fullMenu = ALL_MENUS.find(m => m.main === picked.main);
+  const cal = fullMenu ? fullMenu.cal : { main: 350, side: 100, soup: 60, salad: 40 };
+  
   // MENUSを更新
   MENUS[day] = {
     ...MENUS[day],
     main: picked.main,
     side: picked.side,
     soup: picked.soup,
-    salad: picked.salad
-  };
-  
-  // カロリーも更新（簡易的に平均値を設定）
-  MENUS[day].cal = {
-    main: 350,
-    side: 100,
-    soup: 60,
-    salad: 40
+    salad: picked.salad,
+    cal: cal
   };
   
   // カスタムメニューに保存（年月別）
@@ -5213,6 +5214,11 @@ function applyCustomMenus() {
   const monthCustom = customMenus[storageKey] || {};
   Object.entries(monthCustom).forEach(([day, menuData]) => {
     if(typeof menuData === 'object' && menuData.main) {
+      // calがない場合はALL_MENUSから取得
+      if(!menuData.cal) {
+        const fullMenu = ALL_MENUS.find(m => m.main === menuData.main);
+        menuData.cal = fullMenu ? fullMenu.cal : { main: 350, side: 100, soup: 60, salad: 40 };
+      }
       MENUS[parseInt(day)] = menuData;
     } else if(typeof menuData === 'number' && ALL_MENUS[menuData]) {
       MENUS[parseInt(day)] = ALL_MENUS[menuData];
@@ -5223,6 +5229,11 @@ function applyCustomMenus() {
     if(!isNaN(key) && !monthCustom[key]) {
       const day = parseInt(key);
       if(typeof menuData === 'object' && menuData.main) {
+        // calがない場合はALL_MENUSから取得
+        if(!menuData.cal) {
+          const fullMenu = ALL_MENUS.find(m => m.main === menuData.main);
+          menuData.cal = fullMenu ? fullMenu.cal : { main: 350, side: 100, soup: 60, salad: 40 };
+        }
         MENUS[day] = menuData;
       } else if(typeof menuData === 'number' && ALL_MENUS[menuData]) {
         MENUS[day] = ALL_MENUS[menuData];
