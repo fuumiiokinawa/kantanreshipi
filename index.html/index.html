@@ -93,26 +93,6 @@ body {
   letter-spacing: 0.05em;
 }
 
-.reload-btn {
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: 10px;
-  padding: 0.5rem 0.8rem;
-  font-size: 1.1rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  margin-right: 0.5rem;
-}
-
-.reload-btn:hover {
-  background: var(--gold-light);
-  transform: rotate(180deg);
-}
-
-.reload-btn:active {
-  transform: rotate(360deg) scale(0.95);
-}
-
 .nav-tabs {
   display: flex;
   gap: 0.25rem;
@@ -4770,7 +4750,20 @@ function updateRequestMenuOptions() {
   menuSelect.disabled = false;
   menuSelect.innerHTML = '<option value="">-- メニューを選択 --</option>';
   
-  const menus = GENRES[genre];
+  // ALL_MENUSからジャンル別にフィルタ（インデックスで判定）
+  let menus;
+  if(genre === 'japanese') {
+    menus = ALL_MENUS.slice(0, 40);
+  } else if(genre === 'chinese') {
+    menus = ALL_MENUS.slice(40, 70);
+  } else if(genre === 'western') {
+    menus = ALL_MENUS.slice(70, 100);
+  } else if(genre === 'noodle') {
+    menus = ALL_MENUS.slice(100);
+  } else {
+    menus = ALL_MENUS;
+  }
+  
   menus.forEach((menu, index) => {
     const opt = document.createElement('option');
     opt.value = JSON.stringify(menu);
@@ -4852,13 +4845,15 @@ function applyRequest(id) {
     MENUS = generateMonthlyMenus(year, month);
   }
   
-  // ALL_MENUSから同じメニューを検索してカロリー情報を取得
-  const fullMenu = ALL_MENUS.find(m => m.main === req.menu.main);
-  const cal = fullMenu ? fullMenu.cal : { main: 350, side: 100, soup: 60, salad: 40 };
+  // カロリー情報を取得（req.menuにcalがあればそれを使用、なければALL_MENUSから検索）
+  let cal = req.menu.cal;
+  if(!cal) {
+    const fullMenu = ALL_MENUS.find(m => m.main === req.menu.main);
+    cal = fullMenu ? fullMenu.cal : { main: 350, side: 100, soup: 60, salad: 40 };
+  }
   
   // MENUSを更新
   MENUS[day] = {
-    ...MENUS[day],
     main: req.menu.main,
     side: req.menu.side,
     soup: req.menu.soup,
@@ -4970,27 +4965,31 @@ function saveRequests() {
 // メニュー変更（シャッフル）
 // =====================
 function changeMenu(day, genre) {
+  // ALL_MENUSからジャンル別にフィルタ（インデックスで判定）
+  // 和食: 0-39, 中華: 40-69, 洋食: 70-99, 麺丼: 100以降
   let menuList;
-  if(genre === 'random') {
-    menuList = [...GENRES.japanese, ...GENRES.chinese, ...GENRES.western, ...GENRES.noodle];
+  if(genre === 'japanese') {
+    menuList = ALL_MENUS.slice(0, 40);
+  } else if(genre === 'chinese') {
+    menuList = ALL_MENUS.slice(40, 70);
+  } else if(genre === 'western') {
+    menuList = ALL_MENUS.slice(70, 100);
+  } else if(genre === 'noodle') {
+    menuList = ALL_MENUS.slice(100);
   } else {
-    menuList = GENRES[genre];
+    // random - 全部から
+    menuList = ALL_MENUS;
   }
   
   const picked = menuList[Math.floor(Math.random() * menuList.length)];
   
-  // ALL_MENUSから同じメニューを検索してカロリー情報を取得
-  const fullMenu = ALL_MENUS.find(m => m.main === picked.main);
-  const cal = fullMenu ? fullMenu.cal : { main: 350, side: 100, soup: 60, salad: 40 };
-  
-  // MENUSを更新
+  // MENUSを更新（pickedにはcalが含まれている）
   MENUS[day] = {
-    ...MENUS[day],
     main: picked.main,
     side: picked.side,
     soup: picked.soup,
     salad: picked.salad,
-    cal: cal
+    cal: picked.cal
   };
   
   // カスタムメニューに保存（年月別）
