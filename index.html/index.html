@@ -93,6 +93,26 @@ body {
   letter-spacing: 0.05em;
 }
 
+.reload-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 0.5rem 0.8rem;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-right: 0.5rem;
+}
+
+.reload-btn:hover {
+  background: var(--gold-light);
+  transform: rotate(180deg);
+}
+
+.reload-btn:active {
+  transform: rotate(360deg) scale(0.95);
+}
+
 .nav-tabs {
   display: flex;
   gap: 0.25rem;
@@ -256,11 +276,13 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.8rem;
+  gap: 0.5rem;
 }
 
 .today-menu-label {
   font-size: 0.9rem;
   opacity: 0.9;
+  flex: 1;
 }
 
 .today-menu-date {
@@ -268,6 +290,29 @@ body {
   background: rgba(255,255,255,0.2);
   padding: 0.2rem 0.6rem;
   border-radius: 20px;
+}
+
+.reload-btn {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reload-btn:hover {
+  background: rgba(255,255,255,0.3);
+  transform: rotate(180deg);
+}
+
+.reload-btn:active {
+  transform: rotate(360deg);
 }
 
 .today-menu-main {
@@ -2085,6 +2130,7 @@ body {
       <div class="logo-icon">🍽️</div>
       <span class="logo-text">今日何たべる？</span>
     </div>
+    <button class="reload-btn" onclick="reloadData()" title="データを再読み込み">🔄</button>
     <nav class="nav-tabs">
       <button class="nav-tab active" data-tab="calendar">📅 献立</button>
       <button class="nav-tab" data-tab="vote">🗳️ 投票</button>
@@ -2141,6 +2187,7 @@ body {
         <div class="today-menu-header">
           <span class="today-menu-label">🍽️ 今日の献立</span>
           <span class="today-menu-date" id="todayMenuDate"></span>
+          <button class="reload-btn" onclick="reloadData()" title="データを再読み込み">🔄</button>
         </div>
         <div class="today-menu-main" id="todayMenuMain"></div>
         <div class="today-menu-sub" id="todayMenuSub"></div>
@@ -3534,6 +3581,36 @@ function validateData() {
   return { errors, warnings };
 }
 
+// データ再読み込み関数
+function reloadData() {
+  // ボタンにアニメーション
+  const btn = document.querySelector('.reload-btn');
+  btn.style.transform = 'rotate(360deg)';
+  setTimeout(() => { btn.style.transform = ''; }, 500);
+  
+  // Firebaseの場合はリスナーが自動更新するので、画面だけ再描画
+  if(firebaseEnabled && db) {
+    // 現在のタブに応じて再描画
+    const activeTab = document.querySelector('.nav-tab.active');
+    const tabId = activeTab ? activeTab.dataset.tab : 'calendar';
+    
+    if(tabId === 'calendar') {
+      if(viewMode === 'month') renderCalendar();
+      else if(viewMode === 'week') renderWeekView();
+      else renderDayView();
+    } else if(tabId === 'shopping') {
+      renderShop();
+      renderMemos();
+    } else if(tabId === 'vote') {
+      renderVotes();
+    }
+    toast('データを更新しました');
+  } else {
+    // localStorageの場合はページリロード
+    location.reload();
+  }
+}
+
 window.onload = function() {
   // データ整合性チェック（開発用）
   validateData();
@@ -3602,6 +3679,19 @@ function setupEventListeners() {
       this.classList.add('active');
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       document.getElementById(this.dataset.tab).classList.add('active');
+      
+      // タブに応じてコンテンツを更新
+      const tabId = this.dataset.tab;
+      if(tabId === 'calendar') {
+        if(viewMode === 'month') renderCalendar();
+        else if(viewMode === 'week') renderWeekView();
+        else renderDayView();
+      } else if(tabId === 'shopping') {
+        renderShop();
+        renderMemos();
+      } else if(tabId === 'vote') {
+        renderVotes();
+      }
     };
   });
   
@@ -3680,9 +3770,19 @@ function renderCalendar() {
   MENUS = generateMonthlyMenus(year, month);
   
   // カスタムメニューを上書き（グローバル変数を使用）
+  // 新形式（年月別）
+  const storageKey = `${year}-${month}`;
+  const monthCustom = customMenus[storageKey] || {};
+  Object.entries(monthCustom).forEach(([day, menuData]) => {
+    if(typeof menuData === 'object' && menuData.main) {
+      MENUS[parseInt(day)] = menuData;
+    } else if(typeof menuData === 'number' && ALL_MENUS[menuData]) {
+      MENUS[parseInt(day)] = ALL_MENUS[menuData];
+    }
+  });
+  // 旧形式（日のみ - 後方互換性 - 新形式がない場合のみ）
   Object.entries(customMenus).forEach(([key, menuData]) => {
-    // 数字キーの場合（旧形式 - 現在の月のみ）
-    if(!isNaN(key)) {
+    if(!isNaN(key) && !monthCustom[key]) {
       const day = parseInt(key);
       if(typeof menuData === 'object' && menuData.main) {
         MENUS[day] = menuData;
@@ -3768,8 +3868,19 @@ function renderWeekView() {
   MENUS = generateMonthlyMenus(year, month);
   
   // カスタムメニューを上書き（グローバル変数を使用）
+  // 新形式（年月別）
+  const storageKey = `${year}-${month}`;
+  const monthCustom = customMenus[storageKey] || {};
+  Object.entries(monthCustom).forEach(([day, menuData]) => {
+    if(typeof menuData === 'object' && menuData.main) {
+      MENUS[parseInt(day)] = menuData;
+    } else if(typeof menuData === 'number' && ALL_MENUS[menuData]) {
+      MENUS[parseInt(day)] = ALL_MENUS[menuData];
+    }
+  });
+  // 旧形式（日のみ - 後方互換性 - 新形式がない場合のみ）
   Object.entries(customMenus).forEach(([key, menuData]) => {
-    if(!isNaN(key)) {
+    if(!isNaN(key) && !monthCustom[key]) {
       const day = parseInt(key);
       if(typeof menuData === 'object' && menuData.main) {
         MENUS[day] = menuData;
@@ -3833,11 +3944,25 @@ function renderDayView() {
   MENUS = generateMonthlyMenus(year, month);
   
   // カスタムメニューを上書き（グローバル変数を使用）
-  Object.entries(customMenus).forEach(([day, menuData]) => {
+  // 新形式（年月別）
+  const storageKey = `${year}-${month}`;
+  const monthCustom = customMenus[storageKey] || {};
+  Object.entries(monthCustom).forEach(([day, menuData]) => {
     if(typeof menuData === 'object' && menuData.main) {
-      MENUS[day] = menuData;
+      MENUS[parseInt(day)] = menuData;
     } else if(typeof menuData === 'number' && ALL_MENUS[menuData]) {
-      MENUS[day] = ALL_MENUS[menuData];
+      MENUS[parseInt(day)] = ALL_MENUS[menuData];
+    }
+  });
+  // 旧形式（日のみ - 後方互換性 - 新形式がない場合のみ）
+  Object.entries(customMenus).forEach(([key, menuData]) => {
+    if(!isNaN(key) && !monthCustom[key]) {
+      const day = parseInt(key);
+      if(typeof menuData === 'object' && menuData.main) {
+        MENUS[day] = menuData;
+      } else if(typeof menuData === 'number' && ALL_MENUS[menuData]) {
+        MENUS[day] = ALL_MENUS[menuData];
+      }
     }
   });
   
@@ -4309,9 +4434,9 @@ function renderShop() {
       shopMenus[day] = ALL_MENUS[menuData];
     }
   });
-  // 旧形式（日のみ）も読み込み（後方互換性）
+  // 旧形式（日のみ）も読み込み（後方互換性 - 新形式がない場合のみ）
   Object.entries(customMenus).forEach(([day, menuData]) => {
-    if(!isNaN(parseInt(day))) {
+    if(!isNaN(parseInt(day)) && !monthCustom[day]) {
       if(typeof menuData === 'object' && menuData.main) {
         shopMenus[day] = menuData;
       } else if(typeof menuData === 'number' && ALL_MENUS[menuData]) {
@@ -4475,9 +4600,9 @@ function generateShoppingListText() {
       shopMenus[day] = ALL_MENUS[menuData];
     }
   });
-  // 旧形式（日のみ）も読み込み（後方互換性）
+  // 旧形式（日のみ）も読み込み（後方互換性 - 新形式がない場合のみ）
   Object.entries(customMenus).forEach(([day, menuData]) => {
-    if(!isNaN(parseInt(day))) {
+    if(!isNaN(parseInt(day)) && !monthCustom[day]) {
       if(typeof menuData === 'object' && menuData.main) {
         shopMenus[day] = menuData;
       } else if(typeof menuData === 'number' && ALL_MENUS[menuData]) {
@@ -4851,7 +4976,11 @@ function changeMenu(day, genre) {
     salad: 40
   };
   
-  // カスタムメニューに保存
+  // カスタムメニューに保存（年月別）
+  const storageKey = `${year}-${month}`;
+  if(!customMenus[storageKey]) customMenus[storageKey] = {};
+  customMenus[storageKey][day] = MENUS[day];
+  // 後方互換性のため旧形式でも保存
   customMenus[day] = MENUS[day];
   saveCustomMenus();
   
@@ -4886,7 +5015,7 @@ function calculateRanking() {
       }
       
       if(winnerMenuId !== null) {
-        const menu = MENUS[winnerMenuId];
+        const menu = ALL_MENUS[winnerMenuId];
         if(menu) {
           const menuName = menu.main;
           wins[menuName] = (wins[menuName] || 0) + 1;
@@ -5036,8 +5165,12 @@ function applyVoteResult(voteId) {
   // カレンダーに反映（メモリ上のMENUSを更新）
   MENUS[day] = winnerMenu;
   
-  // カスタムメニューに保存
-  customMenus[day] = winnerMenuId;
+  // カスタムメニューに保存（年月別）
+  const storageKey = `${voteYear}-${voteMonth}`;
+  if(!customMenus[storageKey]) customMenus[storageKey] = {};
+  customMenus[storageKey][day] = winnerMenu;
+  // 後方互換性のため旧形式でも保存
+  customMenus[day] = winnerMenu;
   saveCustomMenus();
   
   // 表示更新
@@ -5056,8 +5189,14 @@ function loadCustomMenus() {
       customMenus = snapshot.val() || {};
       applyCustomMenus();
       // 現在表示中の画面を更新
-      if(document.getElementById('calendarContent').style.display !== 'none') {
-        renderCalendar();
+      if(document.getElementById('calendar').classList.contains('active')) {
+        if(viewMode === 'month') renderCalendar();
+        else if(viewMode === 'week') renderWeekView();
+        else renderDayView();
+      }
+      // 買い物リストも更新
+      if(document.getElementById('shopping').classList.contains('active')) {
+        renderShop();
       }
     });
   } else {
@@ -5069,16 +5208,23 @@ function loadCustomMenus() {
 
 // カスタムメニューをMENUSに適用
 function applyCustomMenus() {
+  // 新形式（年月別）
+  const storageKey = `${year}-${month}`;
+  const monthCustom = customMenus[storageKey] || {};
+  Object.entries(monthCustom).forEach(([day, menuData]) => {
+    if(typeof menuData === 'object' && menuData.main) {
+      MENUS[parseInt(day)] = menuData;
+    } else if(typeof menuData === 'number' && ALL_MENUS[menuData]) {
+      MENUS[parseInt(day)] = ALL_MENUS[menuData];
+    }
+  });
+  // 旧形式（日のみ - 後方互換性 - 新形式がない場合のみ）
   Object.entries(customMenus).forEach(([key, menuData]) => {
-    // 数字キーの場合（日付）
-    if(!isNaN(key)) {
+    if(!isNaN(key) && !monthCustom[key]) {
       const day = parseInt(key);
-      // menuDataがオブジェクト（シャッフル・リクエストで保存）の場合
       if(typeof menuData === 'object' && menuData.main) {
         MENUS[day] = menuData;
-      }
-      // menuDataが数値（投票反映で保存 - ALL_MENUSのインデックス）の場合
-      else if(typeof menuData === 'number' && ALL_MENUS[menuData]) {
+      } else if(typeof menuData === 'number' && ALL_MENUS[menuData]) {
         MENUS[day] = ALL_MENUS[menuData];
       }
     }
@@ -5129,7 +5275,7 @@ function loadCheckedItems() {
     db.ref('checkedItems').on('value', (snapshot) => {
       checkedItems = snapshot.val() || {};
       // 買い物リストが表示中なら再描画
-      if(document.getElementById('shopContent').style.display !== 'none') {
+      if(document.getElementById('shopping').classList.contains('active')) {
         renderShop();
       }
     });
@@ -5183,6 +5329,63 @@ function updateCheckedCount() {
 // =====================
 // ユーティリティ
 // =====================
+function reloadData() {
+  // ボタンをアニメーション
+  const btn = document.querySelector('.reload-btn');
+  if(btn) {
+    btn.style.transition = 'transform 0.5s';
+    btn.style.transform = 'rotate(360deg)';
+    setTimeout(() => {
+      btn.style.transition = '';
+      btn.style.transform = '';
+    }, 500);
+  }
+  
+  // 全データを再読み込み
+  if(firebaseEnabled && db) {
+    // Firebaseの場合はリスナーが自動更新するが、明示的にも取得
+    db.ref('customMenus').once('value', (snapshot) => {
+      customMenus = snapshot.val() || {};
+      applyCustomMenus();
+      renderCalendar();
+      renderShop();
+    });
+    db.ref('votes').once('value', (snapshot) => {
+      votes = snapshot.val() || {};
+      renderVotes();
+    });
+    db.ref('requests').once('value', (snapshot) => {
+      const data = snapshot.val();
+      requests = data ? Object.values(data).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) : [];
+      renderRequests();
+    });
+    db.ref('memos').once('value', (snapshot) => {
+      memos = snapshot.val() || {};
+      renderMemos();
+    });
+    db.ref('checkedItems').once('value', (snapshot) => {
+      checkedItems = snapshot.val() || {};
+      renderShop();
+    });
+  } else {
+    // ローカルの場合
+    customMenus = JSON.parse(localStorage.getItem('kondateCustomMenus') || '{}');
+    votes = JSON.parse(localStorage.getItem('kondateVotes') || '{}');
+    requests = JSON.parse(localStorage.getItem('kondateRequests') || '[]');
+    memos = JSON.parse(localStorage.getItem('kondateMemos') || '{}');
+    checkedItems = JSON.parse(localStorage.getItem('kondateChecked') || '{}');
+    
+    applyCustomMenus();
+    renderCalendar();
+    renderShop();
+    renderVotes();
+    renderRequests();
+    renderMemos();
+  }
+  
+  toast('データを更新しました');
+}
+
 function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -5193,10 +5396,21 @@ function toast(msg) {
 // 献立と買い物リストのテキストを生成
 function generateMenuText(day) {
   // カスタムメニューを考慮（グローバル変数を使用）
-  const customKey = `${year}-${month+1}-${day}`;
+  // 新形式（年月別）を確認
+  const storageKey = `${year}-${month}`;
+  const monthCustom = customMenus[storageKey] || {};
   let menu;
-  if(customMenus[customKey]) {
-    const menuData = customMenus[customKey];
+  if(monthCustom[day]) {
+    const menuData = monthCustom[day];
+    if(typeof menuData === 'object' && menuData.main) {
+      menu = menuData;
+    } else if(typeof menuData === 'number' && ALL_MENUS[menuData]) {
+      menu = ALL_MENUS[menuData];
+    }
+  }
+  // 旧形式（日のみ）も確認
+  if(!menu && customMenus[day]) {
+    const menuData = customMenus[day];
     if(typeof menuData === 'object' && menuData.main) {
       menu = menuData;
     } else if(typeof menuData === 'number' && ALL_MENUS[menuData]) {
