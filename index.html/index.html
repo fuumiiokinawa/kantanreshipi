@@ -276,13 +276,11 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.8rem;
-  gap: 0.5rem;
 }
 
 .today-menu-label {
   font-size: 0.9rem;
   opacity: 0.9;
-  flex: 1;
 }
 
 .today-menu-date {
@@ -293,25 +291,40 @@ body {
 }
 
 .reload-btn {
-  background: rgba(255,255,255,0.2);
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  z-index: 1001;
+  background: #fff;
   border: none;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  font-size: 1rem;
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #333;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 5px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
 }
 
 .reload-btn:hover {
-  background: rgba(255,255,255,0.3);
-  transform: rotate(180deg);
+  background: #f5f5f5;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
 }
 
 .reload-btn:active {
+  transform: scale(0.97);
+}
+
+.reload-btn .icon {
+  display: inline-block;
+  transition: transform 0.4s ease;
+}
+
+.reload-btn.spinning .icon {
   transform: rotate(360deg);
 }
 
@@ -2130,7 +2143,6 @@ body {
       <div class="logo-icon">🍽️</div>
       <span class="logo-text">今日何たべる？</span>
     </div>
-    <button class="reload-btn" onclick="reloadData()" title="データを再読み込み">🔄</button>
     <nav class="nav-tabs">
       <button class="nav-tab active" data-tab="calendar">📅 献立</button>
       <button class="nav-tab" data-tab="vote">🗳️ 投票</button>
@@ -2138,6 +2150,11 @@ body {
     </nav>
   </div>
 </header>
+
+<!-- リロードボタン（画面右上固定） -->
+<button class="reload-btn" id="reloadBtn" onclick="reloadData()" title="データを再読み込み">
+  <span class="icon">↻</span>更新
+</button>
 
 <main class="main">
   <!-- ユーザー設定 -->
@@ -2187,7 +2204,6 @@ body {
         <div class="today-menu-header">
           <span class="today-menu-label">🍽️ 今日の献立</span>
           <span class="today-menu-date" id="todayMenuDate"></span>
-          <button class="reload-btn" onclick="reloadData()" title="データを再読み込み">🔄</button>
         </div>
         <div class="today-menu-main" id="todayMenuMain"></div>
         <div class="today-menu-sub" id="todayMenuSub"></div>
@@ -5342,14 +5358,10 @@ function updateCheckedCount() {
 // =====================
 function reloadData() {
   // ボタンをアニメーション
-  const btn = document.querySelector('.reload-btn');
+  const btn = document.getElementById('reloadBtn');
   if(btn) {
-    btn.style.transition = 'transform 0.5s';
-    btn.style.transform = 'rotate(360deg)';
-    setTimeout(() => {
-      btn.style.transition = '';
-      btn.style.transform = '';
-    }, 500);
+    btn.classList.add('spinning');
+    setTimeout(() => btn.classList.remove('spinning'), 600);
   }
   
   // 全データを再読み込み
