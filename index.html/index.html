@@ -3278,6 +3278,7 @@ let shoppingMonth = today.getMonth(); // 現在の月
 let shoppingYear = today.getFullYear();
 let peopleCount = 6;
 let votes = {};
+let customMenus = {}; // グローバル変数として管理
 
 const VOTER_COLORS = ['#d4af37', '#722f37', '#5c7a9b', '#6b8f71', '#9b59b6', '#e74c3c'];
 
@@ -3549,9 +3550,10 @@ window.onload = function() {
   initMenuOptions();
   loadVotes();
   loadRequests();
+  loadMemos();
+  loadCheckedItems();
   renderCalendar();
   renderShop();
-  renderMemos();
   updateShoppingMonthTitle();
   setupEventListeners();
 };
@@ -3677,8 +3679,7 @@ function renderCalendar() {
   // 月が変わったらメニューを再生成
   MENUS = generateMonthlyMenus(year, month);
   
-  // カスタムメニューを上書き
-  const customMenus = JSON.parse(localStorage.getItem('kondateCustomMenus') || '{}');
+  // カスタムメニューを上書き（グローバル変数を使用）
   Object.entries(customMenus).forEach(([key, menuData]) => {
     // 数字キーの場合（旧形式 - 現在の月のみ）
     if(!isNaN(key)) {
@@ -3766,8 +3767,7 @@ function renderWeekView() {
   // 月が変わったらメニューを再生成
   MENUS = generateMonthlyMenus(year, month);
   
-  // カスタムメニューを上書き
-  const customMenus = JSON.parse(localStorage.getItem('kondateCustomMenus') || '{}');
+  // カスタムメニューを上書き（グローバル変数を使用）
   Object.entries(customMenus).forEach(([key, menuData]) => {
     if(!isNaN(key)) {
       const day = parseInt(key);
@@ -3832,8 +3832,7 @@ function renderDayView() {
   // 月が変わったらメニューを再生成
   MENUS = generateMonthlyMenus(year, month);
   
-  // カスタムメニューを上書き
-  const customMenus = JSON.parse(localStorage.getItem('kondateCustomMenus') || '{}');
+  // カスタムメニューを上書き（グローバル変数を使用）
   Object.entries(customMenus).forEach(([day, menuData]) => {
     if(typeof menuData === 'object' && menuData.main) {
       MENUS[day] = menuData;
@@ -4298,8 +4297,7 @@ function renderShop() {
   // 買い物月のメニューを生成
   const shopMenus = generateMonthlyMenus(shoppingYear, shoppingMonth);
   
-  // カスタムメニューを上書き（年月別 + 旧形式の両方に対応）
-  const customMenus = JSON.parse(localStorage.getItem('kondateCustomMenus') || '{}');
+  // カスタムメニューを上書き（年月別 + 旧形式の両方に対応）- グローバル変数を使用
   const storageKey = `${shoppingYear}-${shoppingMonth}`;
   
   // 新形式（年月別）
@@ -4465,8 +4463,7 @@ function renderShop() {
 function generateShoppingListText() {
   const shopMenus = generateMonthlyMenus(shoppingYear, shoppingMonth);
   
-  // カスタムメニューを上書き（年月別 + 旧形式の両方に対応）
-  const customMenus = JSON.parse(localStorage.getItem('kondateCustomMenus') || '{}');
+  // カスタムメニューを上書き（年月別 + 旧形式の両方に対応）- グローバル変数を使用
   const storageKey = `${shoppingYear}-${shoppingMonth}`;
   
   // 新形式（年月別）
@@ -4591,7 +4588,7 @@ function shareShoppingListToLine() {
 // =====================
 // メニューリクエスト
 // =====================
-let requests = JSON.parse(localStorage.getItem('kondateRequests') || '[]');
+let requests = [];
 
 const GENRE_NAMES = {
   japanese: '🍱 和食',
@@ -4675,14 +4672,7 @@ function submitRequest() {
   };
   
   requests.unshift(request);
-  
-  // ローカルストレージに保存
-  localStorage.setItem('kondateRequests', JSON.stringify(requests));
-  
-  // Firebaseにも保存（有効な場合）
-  if(firebaseEnabled && db) {
-    db.ref('requests/' + request.id).set(request);
-  }
+  saveRequests();
   
   // フォームリセット
   document.getElementById('requestGenre').value = '';
@@ -4695,7 +4685,7 @@ function submitRequest() {
 
 function deleteRequest(id) {
   requests = requests.filter(r => r.id !== id);
-  localStorage.setItem('kondateRequests', JSON.stringify(requests));
+  saveRequests();
   
   if(firebaseEnabled && db) {
     db.ref('requests/' + id).remove();
@@ -4731,16 +4721,15 @@ function applyRequest(id) {
     cal: { main: 350, side: 100, soup: 60, salad: 40 }
   };
   
-  // ローカルストレージに保存（年月日をキーに含める）
+  // カスタムメニューに保存（年月日をキーに含める）
   const storageKey = `${reqYear}-${reqMonth}`;
-  let customMenus = JSON.parse(localStorage.getItem('kondateCustomMenus') || '{}');
   if(!customMenus[storageKey]) customMenus[storageKey] = {};
   customMenus[storageKey][day] = MENUS[day];
   // 後方互換性のため、現在の月の場合は旧形式でも保存
   if(year === reqYear && month === reqMonth) {
     customMenus[day] = MENUS[day];
   }
-  localStorage.setItem('kondateCustomMenus', JSON.stringify(customMenus));
+  saveCustomMenus();
   
   // 画面更新
   if(viewMode === 'month') renderCalendar();
@@ -4809,11 +4798,26 @@ function loadRequests() {
       const data = snapshot.val();
       if(data) {
         requests = Object.values(data).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        renderRequests();
+      } else {
+        requests = [];
       }
+      renderRequests();
     });
   } else {
+    // ローカルストレージから読み込み
+    requests = JSON.parse(localStorage.getItem('kondateRequests') || '[]');
     renderRequests();
+  }
+}
+
+function saveRequests() {
+  if(firebaseEnabled && db) {
+    // Firebaseの場合、全体をセット
+    const requestsObj = {};
+    requests.forEach(r => { requestsObj[r.id] = r; });
+    db.ref('requests').set(requestsObj);
+  } else {
+    localStorage.setItem('kondateRequests', JSON.stringify(requests));
   }
 }
 
@@ -4847,10 +4851,9 @@ function changeMenu(day, genre) {
     salad: 40
   };
   
-  // ローカルストレージに保存
-  let customMenus = JSON.parse(localStorage.getItem('kondateCustomMenus') || '{}');
+  // カスタムメニューに保存
   customMenus[day] = MENUS[day];
-  localStorage.setItem('kondateCustomMenus', JSON.stringify(customMenus));
+  saveCustomMenus();
   
   // 画面更新
   if(viewMode === 'month') renderCalendar();
@@ -4931,7 +4934,27 @@ function renderRanking() {
 // =====================
 // 買い物メモ
 // =====================
-let memos = JSON.parse(localStorage.getItem('kondateMemos') || '{}');
+let memos = {};
+
+function loadMemos() {
+  if(firebaseEnabled && db) {
+    db.ref('memos').on('value', (snapshot) => {
+      memos = snapshot.val() || {};
+      renderMemos();
+    });
+  } else {
+    memos = JSON.parse(localStorage.getItem('kondateMemos') || '{}');
+    renderMemos();
+  }
+}
+
+function saveMemos() {
+  if(firebaseEnabled && db) {
+    db.ref('memos').set(memos);
+  } else {
+    localStorage.setItem('kondateMemos', JSON.stringify(memos));
+  }
+}
 
 function addMemo() {
   const input = document.getElementById('memoInput');
@@ -4941,7 +4964,7 @@ function addMemo() {
   const weekKey = `${shoppingYear}-${shoppingMonth+1}-week${shoppingWeek}`;
   if(!memos[weekKey]) memos[weekKey] = [];
   memos[weekKey].push(text);
-  localStorage.setItem('kondateMemos', JSON.stringify(memos));
+  saveMemos();
   
   input.value = '';
   renderMemos();
@@ -4952,7 +4975,7 @@ function deleteMemo(index) {
   const weekKey = `${shoppingYear}-${shoppingMonth+1}-week${shoppingWeek}`;
   if(memos[weekKey]) {
     memos[weekKey].splice(index, 1);
-    localStorage.setItem('kondateMemos', JSON.stringify(memos));
+    saveMemos();
     renderMemos();
   }
 }
@@ -5013,10 +5036,9 @@ function applyVoteResult(voteId) {
   // カレンダーに反映（メモリ上のMENUSを更新）
   MENUS[day] = winnerMenu;
   
-  // ローカルストレージに保存
-  let customMenus = JSON.parse(localStorage.getItem('kondateCustomMenus') || '{}');
+  // カスタムメニューに保存
   customMenus[day] = winnerMenuId;
-  localStorage.setItem('kondateCustomMenus', JSON.stringify(customMenus));
+  saveCustomMenus();
   
   // 表示更新
   if(viewMode === 'month') renderCalendar();
@@ -5028,7 +5050,25 @@ function applyVoteResult(voteId) {
 
 // カスタムメニューを読み込み
 function loadCustomMenus() {
-  const customMenus = JSON.parse(localStorage.getItem('kondateCustomMenus') || '{}');
+  if(firebaseEnabled && db) {
+    // Firebaseからリアルタイム同期
+    db.ref('customMenus').on('value', (snapshot) => {
+      customMenus = snapshot.val() || {};
+      applyCustomMenus();
+      // 現在表示中の画面を更新
+      if(document.getElementById('calendarContent').style.display !== 'none') {
+        renderCalendar();
+      }
+    });
+  } else {
+    // ローカルストレージから読み込み
+    customMenus = JSON.parse(localStorage.getItem('kondateCustomMenus') || '{}');
+    applyCustomMenus();
+  }
+}
+
+// カスタムメニューをMENUSに適用
+function applyCustomMenus() {
   Object.entries(customMenus).forEach(([key, menuData]) => {
     // 数字キーの場合（日付）
     if(!isNaN(key)) {
@@ -5043,6 +5083,15 @@ function loadCustomMenus() {
       }
     }
   });
+}
+
+// カスタムメニューを保存
+function saveCustomMenus() {
+  if(firebaseEnabled && db) {
+    db.ref('customMenus').set(customMenus);
+  } else {
+    localStorage.setItem('kondateCustomMenus', JSON.stringify(customMenus));
+  }
 }
 
 // =====================
@@ -5073,7 +5122,29 @@ function updateShoppingMonthTitle() {
 // =====================
 // 買い物チェック
 // =====================
-let checkedItems = JSON.parse(localStorage.getItem('kondateChecked') || '{}');
+let checkedItems = {};
+
+function loadCheckedItems() {
+  if(firebaseEnabled && db) {
+    db.ref('checkedItems').on('value', (snapshot) => {
+      checkedItems = snapshot.val() || {};
+      // 買い物リストが表示中なら再描画
+      if(document.getElementById('shopContent').style.display !== 'none') {
+        renderShop();
+      }
+    });
+  } else {
+    checkedItems = JSON.parse(localStorage.getItem('kondateChecked') || '{}');
+  }
+}
+
+function saveCheckedItems() {
+  if(firebaseEnabled && db) {
+    db.ref('checkedItems').set(checkedItems);
+  } else {
+    localStorage.setItem('kondateChecked', JSON.stringify(checkedItems));
+  }
+}
 
 function checkItem(el) {
   const item = el.parentElement;
@@ -5082,7 +5153,7 @@ function checkItem(el) {
   
   if(!checkedItems[weekKey]) checkedItems[weekKey] = [];
   checkedItems[weekKey].push(itemName);
-  localStorage.setItem('kondateChecked', JSON.stringify(checkedItems));
+  saveCheckedItems();
   
   el.classList.add('checked');
   el.innerHTML = '✓';
@@ -5094,7 +5165,7 @@ function checkItem(el) {
 function resetCheckedItems() {
   const weekKey = `${shoppingYear}-${shoppingMonth+1}-week${shoppingWeek}`;
   checkedItems[weekKey] = [];
-  localStorage.setItem('kondateChecked', JSON.stringify(checkedItems));
+  saveCheckedItems();
   renderShop();
   toast('チェックをリセットしました');
 }
@@ -5121,8 +5192,7 @@ function toast(msg) {
 
 // 献立と買い物リストのテキストを生成
 function generateMenuText(day) {
-  // カスタムメニューを考慮
-  const customMenus = JSON.parse(localStorage.getItem('kondateCustomMenus') || '{}');
+  // カスタムメニューを考慮（グローバル変数を使用）
   const customKey = `${year}-${month+1}-${day}`;
   let menu;
   if(customMenus[customKey]) {
